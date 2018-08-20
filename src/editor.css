@@ -1,0 +1,9 @@
+.formula-editor iframe{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: solid 1px transparent;
+}
+iframe.formula-2{
+    border-color: #000;
+}
