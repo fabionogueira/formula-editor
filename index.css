@@ -1,0 +1,27 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  iframe {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 600px;
+    height: 100px;
+    border: solid 1px #000;
+  }
+  
+  #editor {
+   xtop: 120px 
+  }
+  
+  .editor textarea {
+    background: #1E1F20;
+    border: 1px solid #d3d3d3;
+    color: #d3d3d3;
+    flex: 1;
+    font-size: 16px;
+    height: 50vh;
+  }
