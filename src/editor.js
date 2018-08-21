@@ -8,22 +8,20 @@ export default class Editor{
         this._config(config)
 
         element.innerHTML = 
-            `<div class="formula-editor" style="position:relative;width:100%;height:100%">
+            `<div class="formula-editor">
                 <pre class="formula-editor-pre"></pre>
                 <textarea class="formula-editor-textarea" spellcheck="false"></textarea>
-                <div class="caret" style="left:6px;top:4px"></div>
             </div>`
 
-        this._onTip = config.onTip
-        this._functions = {}
-        this._fields = {}
-        this._tokenizer = new Tokenizer()
-        this._activeCaretRange = null
         this._pre = element.querySelector('pre')
         this._textarea = element.querySelector('textarea')
-        this._caret = element.querySelector('.caret')
+        this._tokenizer = new Tokenizer()
+
+        this._functions = {}
+        this._fields = {}
         
-        this._showCaret(false)
+        this._onTip = config.onTip
+        
         this._initEvents()
     }
 
@@ -31,33 +29,39 @@ export default class Editor{
         
     }
 
-    _showCaret(show){
-        this._caret.style.display = show ? 'block' : 'none'
-    }
-
     _initEvents(){
         let textarea = this._textarea
         let pre = this._pre
 
         textarea.onscroll = () => {
-            pre.scrollTop = textarea.scrollTop
-            pre.scrollLeft = textarea.scrollLeft
+            pre.style.top = -textarea.scrollTop + 'px'
+            pre.style.left = textarea.scrollLeft + 'px'
+        }
+        textarea.onkeydown = (event) => {
+            let value1, value2, position
 
-            this._updateCaret()
+            if (event.keyCode == 9){
+                event.preventDefault()
+
+                position = textarea.selectionStart + 4
+                value1 = textarea.value.substring(0, textarea.selectionStart)
+                value2 = textarea.value.substring(textarea.selectionEnd, textarea.value.length)
+
+                textarea.value = `${value1}    ${value2}`
+                textarea.selectionStart = position
+                textarea.selectionEnd = position
+                textarea.focus()
+
+                this._renderBackground()
+
+                return false
+            }
         }
-        textarea.onblur = () => {
-            this._showCaret(false)
-        }
-        textarea.onfocus = () => {
-            this._showCaret(true)
-        }
-        textarea._onkeyup = () => {
+        textarea.onkeyup = () => {
             let t, i, o, n, s, b, e
             let tip = ''
     
-            this._updateCaret()
-    
-            t = this._getParamDefinition(this._activeCaretRange.caretPos - 1)
+            t = this._getParamDefinition(this._textarea.selectionStart -1)
             
             if (t){
                 if (t.type=='function' && !t.validate){
@@ -103,40 +107,10 @@ export default class Editor{
             if (this._onTip){
                 this._onTip(tip)
             }
-        }
-        textarea._onkeydown = (event) => {
-            if (event.keyCode == 9){
-                event.preventDefault()
-                return document.execCommand('insertText', false, '    ')
-            }
-            
-            this._updateCaret()
-        }
-        textarea._onmousedown = () => {
-            setTimeout(() => {
-                this._updateCaret()
-            }, 100)
-        }
-        textarea._onpaste = (event) => {
-            let text = event.clipboardData.getData("text/plain")
-    
-            event.preventDefault()
-            document.execCommand('insertText', false, text)
-        }    
-        textarea._oninput = () => {
-            this._updateCaret()
+        }   
+        textarea.oninput = () => {
             this._renderBackground()
         }
-    }
-
-    _updateCaret() {
-        // let rect
-        // let range = getCursorPos(this._textarea)
-        
-        // rect = range.getBoundingClientRect()
-        
-        // this._caret.style.top = (rect.y-2) + 'px'
-        // this._caret.style.left = rect.x + 'px'
     }
 
     _getParamDefinition(position){
@@ -147,7 +121,7 @@ export default class Editor{
         while (position >= 0){
             token = positions[position]
             
-            if (token){
+            if (token && token.type != 'blank'){
                 this._validateToken(token)
                 return token
             }
@@ -168,7 +142,7 @@ export default class Editor{
                 tk = tokens[i]
                 
                 if (tk.value == '('){
-                    return token.validate = true
+                    return token.validate = this._functions[token.value] ? true : false
                 } else if (tk.type != 'blank'){
                     return token.validate = false
                 }
@@ -179,8 +153,7 @@ export default class Editor{
     }
 
     _renderBackground(){
-        let content = this._textarea.contentDocument.body.firstChild.innerText
-        let tokens = this._tokenizer.execute(content)
+        let tokens = this._tokenizer.execute(this._textarea.value)
         let html = ''
     
         tokens.forEach(token => {
@@ -192,8 +165,8 @@ export default class Editor{
 
             html += this._formatToken(token)
         })
-    
-        this._pre.contentDocument.body.innerHTML = '<pre>' + html + '</pre>'
+        
+        this._pre.innerHTML = html
     }
 
     _formatToken(token){
@@ -213,38 +186,4 @@ export default class Editor{
         this._fields = fields
     }
 }
-
-function getCursorPos(input) {
-    let len, sel, caretPos, range
-
-    sel = document['selection'].createRange();
-    
-    if (sel.parentElement() === input) {
-        range = input.createTextRange();
-        range.moveToBookmark(sel.getBookmark());
-        for (len = 0;
-                    range.compareEndPoints("EndToStart", range) > 0;
-                    range.moveEnd("character", -1)) {
-            len++;
-        }
-
-        range.setEndPoint("StartToStart", input.createTextRange());
-        
-        for (caretPos = { start: 0, end: len };
-                    range.compareEndPoints("EndToStart", range) > 0;
-                    range.moveEnd("character", -1)) {
-            caretPos.start++;
-            caretPos.end++;
-        }
-        
-        range.caretPos = {
-            start: input.selectionStart,
-            end: input.selectionEnd
-        }
-
-        return range
-    }
-
-
-    return null;
-}
+ window['xx'] = 0

@@ -1,5 +1,8 @@
 .formula-editor{
-    
+    position:relative;
+    overflow: hidden;
+    width:100%;
+    height:100%;
 }
 .formula-editor-pre, .formula-editor-textarea{
     position: absolute;
@@ -15,8 +18,9 @@
 .formula-editor-textarea{
     border-color: #000;
     resize: none;
-    xcolor: transparent;
-    xbackground: transparent;
+    color: transparent;
+    background: transparent;
+    caret-color: #000;
 }
 
 .string{

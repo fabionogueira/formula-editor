@@ -119,29 +119,23 @@ var Editor = function () {
 
         this._config(config);
 
-        element.innerHTML = '<div class="formula-editor" style="position:relative;width:100%;height:100%">\n                <pre class="formula-editor-pre"></pre>\n                <textarea class="formula-editor-textarea" spellcheck="false"></textarea>\n                <div class="caret" style="left:6px;top:4px"></div>\n            </div>';
+        element.innerHTML = '<div class="formula-editor">\n                <pre class="formula-editor-pre"></pre>\n                <textarea class="formula-editor-textarea" spellcheck="false"></textarea>\n            </div>';
 
-        this._onTip = config.onTip;
-        this._functions = {};
-        this._fields = {};
-        this._tokenizer = new _tokenizer2.default();
-        this._activeCaretRange = null;
         this._pre = element.querySelector('pre');
         this._textarea = element.querySelector('textarea');
-        this._caret = element.querySelector('.caret');
+        this._tokenizer = new _tokenizer2.default();
 
-        this._showCaret(false);
+        this._functions = {};
+        this._fields = {};
+
+        this._onTip = config.onTip;
+
         this._initEvents();
     }
 
     _createClass(Editor, [{
         key: '_config',
         value: function _config(config) {}
-    }, {
-        key: '_showCaret',
-        value: function _showCaret(show) {
-            this._caret.style.display = show ? 'block' : 'none';
-        }
     }, {
         key: '_initEvents',
         value: function _initEvents() {
@@ -151,18 +145,32 @@ var Editor = function () {
             var pre = this._pre;
 
             textarea.onscroll = function () {
-                pre.scrollTop = textarea.scrollTop;
-                pre.scrollLeft = textarea.scrollLeft;
+                pre.style.top = -textarea.scrollTop + 'px';
+                pre.style.left = textarea.scrollLeft + 'px';
+            };
+            textarea.onkeydown = function (event) {
+                var value1 = void 0,
+                    value2 = void 0,
+                    position = void 0;
 
-                _this._updateCaret();
+                if (event.keyCode == 9) {
+                    event.preventDefault();
+
+                    position = textarea.selectionStart + 4;
+                    value1 = textarea.value.substring(0, textarea.selectionStart);
+                    value2 = textarea.value.substring(textarea.selectionEnd, textarea.value.length);
+
+                    textarea.value = value1 + '    ' + value2;
+                    textarea.selectionStart = position;
+                    textarea.selectionEnd = position;
+                    textarea.focus();
+
+                    _this._renderBackground();
+
+                    return false;
+                }
             };
-            textarea.onblur = function () {
-                _this._showCaret(false);
-            };
-            textarea.onfocus = function () {
-                _this._showCaret(true);
-            };
-            textarea._onkeyup = function () {
+            textarea.onkeyup = function () {
                 var t = void 0,
                     i = void 0,
                     o = void 0,
@@ -172,9 +180,7 @@ var Editor = function () {
                     e = void 0;
                 var tip = '';
 
-                _this._updateCaret();
-
-                t = _this._getParamDefinition(_this._activeCaretRange.caretPos - 1);
+                t = _this._getParamDefinition(_this._textarea.selectionStart - 1);
 
                 if (t) {
                     if (t.type == 'function' && !t.validate) {
@@ -220,40 +226,9 @@ var Editor = function () {
                     _this._onTip(tip);
                 }
             };
-            textarea._onkeydown = function (event) {
-                if (event.keyCode == 9) {
-                    event.preventDefault();
-                    return document.execCommand('insertText', false, '    ');
-                }
-
-                _this._updateCaret();
-            };
-            textarea._onmousedown = function () {
-                setTimeout(function () {
-                    _this._updateCaret();
-                }, 100);
-            };
-            textarea._onpaste = function (event) {
-                var text = event.clipboardData.getData("text/plain");
-
-                event.preventDefault();
-                document.execCommand('insertText', false, text);
-            };
-            textarea._oninput = function () {
-                _this._updateCaret();
+            textarea.oninput = function () {
                 _this._renderBackground();
             };
-        }
-    }, {
-        key: '_updateCaret',
-        value: function _updateCaret() {
-            // let rect
-            // let range = getCursorPos(this._textarea)
-
-            // rect = range.getBoundingClientRect()
-
-            // this._caret.style.top = (rect.y-2) + 'px'
-            // this._caret.style.left = rect.x + 'px'
         }
     }, {
         key: '_getParamDefinition',
@@ -265,7 +240,7 @@ var Editor = function () {
             while (position >= 0) {
                 token = positions[position];
 
-                if (token) {
+                if (token && token.type != 'blank') {
                     this._validateToken(token);
                     return token;
                 }
@@ -288,7 +263,7 @@ var Editor = function () {
                     tk = tokens[i];
 
                     if (tk.value == '(') {
-                        return token.validate = true;
+                        return token.validate = this._functions[token.value] ? true : false;
                     } else if (tk.type != 'blank') {
                         return token.validate = false;
                     }
@@ -302,8 +277,7 @@ var Editor = function () {
         value: function _renderBackground() {
             var _this2 = this;
 
-            var content = this._textarea.contentDocument.body.firstChild.innerText;
-            var tokens = this._tokenizer.execute(content);
+            var tokens = this._tokenizer.execute(this._textarea.value);
             var html = '';
 
             tokens.forEach(function (token) {
@@ -316,7 +290,7 @@ var Editor = function () {
                 html += _this2._formatToken(token);
             });
 
-            this._pre.contentDocument.body.innerHTML = '<pre>' + html + '</pre>';
+            this._pre.innerHTML = html;
         }
     }, {
         key: '_formatToken',
@@ -345,39 +319,7 @@ var Editor = function () {
 
 exports.default = Editor;
 
-
-function getCursorPos(input) {
-    var len = void 0,
-        sel = void 0,
-        caretPos = void 0,
-        range = void 0;
-
-    sel = document['selection'].createRange();
-
-    if (sel.parentElement() === input) {
-        range = input.createTextRange();
-        range.moveToBookmark(sel.getBookmark());
-        for (len = 0; range.compareEndPoints("EndToStart", range) > 0; range.moveEnd("character", -1)) {
-            len++;
-        }
-
-        range.setEndPoint("StartToStart", input.createTextRange());
-
-        for (caretPos = { start: 0, end: len }; range.compareEndPoints("EndToStart", range) > 0; range.moveEnd("character", -1)) {
-            caretPos.start++;
-            caretPos.end++;
-        }
-
-        range.caretPos = {
-            start: input.selectionStart,
-            end: input.selectionEnd
-        };
-
-        return range;
-    }
-
-    return null;
-}
+window['xx'] = 0;
 
 /***/ }),
 
