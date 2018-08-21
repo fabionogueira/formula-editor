@@ -9,7 +9,7 @@ export default class Editor{
 
         element.innerHTML = 
             `<div class="formula-editor">
-                <pre class="formula-editor-pre"></pre>
+                <pre class="formula-editor-pre"> </pre>
                 <textarea class="formula-editor-textarea" spellcheck="false"></textarea>
             </div>`
 
@@ -52,69 +52,75 @@ export default class Editor{
                 textarea.selectionEnd = position
                 textarea.focus()
 
-                this._renderBackground()
+                this._render()
 
                 return false
             }
         }
         textarea.onkeyup = () => {
-            let t, i, o, n, s, b, e
-            let tip = ''
-    
-            t = this._getParamDefinition(this._textarea.selectionStart -1)
-            
-            if (t){
-                if (t.type=='function' && !t.validate){
-                    for (i in this._functions){
-                        if (i.startsWith(t.value)){
-                            tip += `<p style="${i==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
-                        }
-                    }
-                } else if (t.type=='field' && !t.validate){
-                    for (i in this._fields){
-                        n = i.substring(0, i.length - 1)
-                        if (i.startsWith(t.value)){
-                            tip += `<p style="${n==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
-                        }
-                    }
-                } else if (t.context){
-                    o = this._functions[t.context]
-                    if (o){
-                        tip = t.context + '('
-                        s = ''
-                        
-                        if (o.arguments){
-                            e = false
-                            for (i=0; i<o.arguments.length; i++){
-                                n = o.arguments[i].name
-                                b = (i == t.argumentIndex)
-                                
-                                if (b){
-                                    e = true
-                                }
-                                
-                                tip += s + ( b || (i==o.arguments.length-1 && !e && o.arguments[i].several) ? `<b style="background:#f3dd9b">${n}</b>` : n)
-                                s = '; '
-                            }
-
-                            tip += ')'
-                        }
-                    }
-                    
-                }
-            }
-    
-            if (this._onTip){
-                this._onTip(tip)
-            }
+            this._generateTip()
+        }
+        textarea.onmouseup = () => {
+            this._generateTip()
         }   
         textarea.oninput = () => {
-            this._renderBackground()
+            this._render()
+        }
+    }
+
+    _generateTip(){
+        let t, i, o, n, s, b, e
+        let tip = ''
+
+        t = this._getParamDefinition(this._textarea.selectionStart -1)
+        
+        if (t){
+            if (t.type=='function' && !t.validate){
+                for (i in this._functions){
+                    if (i.startsWith(t.value)){
+                        tip += `<p style="${i==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
+                    }
+                }
+            } else if (t.type=='field' && !t.validate){
+                for (i in this._fields){
+                    n = i.substring(0, i.length - 1)
+                    if (i.startsWith(t.value)){
+                        tip += `<p style="${n==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
+                    }
+                }
+            } else if (t.context){
+                o = this._functions[t.context]
+                if (o){
+                    tip = t.context + '('
+                    s = ''
+                    
+                    if (o.arguments){
+                        e = false
+                        for (i=0; i<o.arguments.length; i++){
+                            n = o.arguments[i].name
+                            b = (i == t.argumentIndex)
+                            
+                            if (b){
+                                e = true
+                            }
+                            
+                            tip += s + ( b || (i==o.arguments.length-1 && !e && o.arguments[i].several) ? `<b style="background:#f3dd9b">${n}</b>` : n)
+                            s = '; '
+                        }
+
+                        tip += ')'
+                    }
+                }
+                
+            }
+        }
+
+        if (this._onTip){
+            this._onTip(tip)
         }
     }
 
     _getParamDefinition(position){
-        /** @type {*} */
         let token
         let positions = this._tokenizer.getPositions()
     
@@ -152,7 +158,7 @@ export default class Editor{
         }
     }
 
-    _renderBackground(){
+    _render(){
         let tokens = this._tokenizer.execute(this._textarea.value)
         let html = ''
     
@@ -166,7 +172,8 @@ export default class Editor{
             html += this._formatToken(token)
         })
         
-        this._pre.innerHTML = html
+        this._pre.innerHTML = html + ' \n'
+        this._textarea.style.height = this._pre.offsetHeight + 'px'
     }
 
     _formatToken(token){

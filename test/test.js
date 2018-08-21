@@ -119,7 +119,7 @@ var Editor = function () {
 
         this._config(config);
 
-        element.innerHTML = '<div class="formula-editor">\n                <pre class="formula-editor-pre"></pre>\n                <textarea class="formula-editor-textarea" spellcheck="false"></textarea>\n            </div>';
+        element.innerHTML = '<div class="formula-editor">\n                <pre class="formula-editor-pre"> </pre>\n                <textarea class="formula-editor-textarea" spellcheck="false"></textarea>\n            </div>';
 
         this._pre = element.querySelector('pre');
         this._textarea = element.querySelector('textarea');
@@ -165,75 +165,82 @@ var Editor = function () {
                     textarea.selectionEnd = position;
                     textarea.focus();
 
-                    _this._renderBackground();
+                    _this._render();
 
                     return false;
                 }
             };
             textarea.onkeyup = function () {
-                var t = void 0,
-                    i = void 0,
-                    o = void 0,
-                    n = void 0,
-                    s = void 0,
-                    b = void 0,
-                    e = void 0;
-                var tip = '';
+                _this._generateTip();
+            };
+            textarea.onmouseup = function () {
+                _this._generateTip();
+            };
+            textarea.oninput = function () {
+                _this._render();
+            };
+        }
+    }, {
+        key: '_generateTip',
+        value: function _generateTip() {
+            var t = void 0,
+                i = void 0,
+                o = void 0,
+                n = void 0,
+                s = void 0,
+                b = void 0,
+                e = void 0;
+            var tip = '';
 
-                t = _this._getParamDefinition(_this._textarea.selectionStart - 1);
+            t = this._getParamDefinition(this._textarea.selectionStart - 1);
 
-                if (t) {
-                    if (t.type == 'function' && !t.validate) {
-                        for (i in _this._functions) {
-                            if (i.startsWith(t.value)) {
-                                tip += '<p style="' + (i == t.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
-                            }
+            if (t) {
+                if (t.type == 'function' && !t.validate) {
+                    for (i in this._functions) {
+                        if (i.startsWith(t.value)) {
+                            tip += '<p style="' + (i == t.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
                         }
-                    } else if (t.type == 'field' && !t.validate) {
-                        for (i in _this._fields) {
-                            n = i.substring(0, i.length - 1);
-                            if (i.startsWith(t.value)) {
-                                tip += '<p style="' + (n == t.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
-                            }
+                    }
+                } else if (t.type == 'field' && !t.validate) {
+                    for (i in this._fields) {
+                        n = i.substring(0, i.length - 1);
+                        if (i.startsWith(t.value)) {
+                            tip += '<p style="' + (n == t.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
                         }
-                    } else if (t.context) {
-                        o = _this._functions[t.context];
-                        if (o) {
-                            tip = t.context + '(';
-                            s = '';
+                    }
+                } else if (t.context) {
+                    o = this._functions[t.context];
+                    if (o) {
+                        tip = t.context + '(';
+                        s = '';
 
-                            if (o.arguments) {
-                                e = false;
-                                for (i = 0; i < o.arguments.length; i++) {
-                                    n = o.arguments[i].name;
-                                    b = i == t.argumentIndex;
+                        if (o.arguments) {
+                            e = false;
+                            for (i = 0; i < o.arguments.length; i++) {
+                                n = o.arguments[i].name;
+                                b = i == t.argumentIndex;
 
-                                    if (b) {
-                                        e = true;
-                                    }
-
-                                    tip += s + (b || i == o.arguments.length - 1 && !e && o.arguments[i].several ? '<b style="background:#f3dd9b">' + n + '</b>' : n);
-                                    s = '; ';
+                                if (b) {
+                                    e = true;
                                 }
 
-                                tip += ')';
+                                tip += s + (b || i == o.arguments.length - 1 && !e && o.arguments[i].several ? '<b style="background:#f3dd9b">' + n + '</b>' : n);
+                                s = '; ';
                             }
+
+                            tip += ')';
                         }
                     }
                 }
+            }
 
-                if (_this._onTip) {
-                    _this._onTip(tip);
-                }
-            };
-            textarea.oninput = function () {
-                _this._renderBackground();
-            };
+            if (this._onTip) {
+                this._onTip(tip);
+            }
         }
     }, {
         key: '_getParamDefinition',
         value: function _getParamDefinition(position) {
-            /** @type {*} */
             var token = void 0;
             var positions = this._tokenizer.getPositions();
 
@@ -273,8 +280,8 @@ var Editor = function () {
             }
         }
     }, {
-        key: '_renderBackground',
-        value: function _renderBackground() {
+        key: '_render',
+        value: function _render() {
             var _this2 = this;
 
             var tokens = this._tokenizer.execute(this._textarea.value);
@@ -290,7 +297,8 @@ var Editor = function () {
                 html += _this2._formatToken(token);
             });
 
-            this._pre.innerHTML = html;
+            this._pre.innerHTML = html + ' \n';
+            this._textarea.style.height = this._pre.offsetHeight + 'px';
         }
     }, {
         key: '_formatToken',
