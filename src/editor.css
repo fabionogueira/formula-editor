@@ -1,9 +1,63 @@
-.formula-editor iframe{
+.formula-editor{
+    
+}
+.formula-editor-pre, .formula-editor-textarea{
     position: absolute;
     width: 100%;
     height: 100%;
     border: solid 1px transparent;
+    padding: 6px;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: monospace;
+    font-size: 12px;
 }
-iframe.formula-2{
+.formula-editor-textarea{
     border-color: #000;
+    resize: none;
+    xcolor: transparent;
+    xbackground: transparent;
 }
+
+.string{
+    color: #FFC107
+}
+.function, .field, .context_var{
+    color: #c0c0c0
+}
+.function.validate{
+    color:blue
+}
+.field-start, .field-end, .field.validate{
+    color:#009688
+}
+.context_var.validate{
+    font-weight: bold;
+    color: #000;
+}
+.operator{
+    color: #9C27B0;
+}
+.number.unvalidate {
+    color: red;
+    /* background-image: url(wiggle.png);
+    background-repeat: repeat-x;
+    background-position: bottom; */
+}
+
+.caret {
+    position:absolute;
+    height:19px;
+    width:1px;
+    background: black;
+    /*animation: 1s blink step-end infinite;
+    -webkit-animation: 1s blink step-end infinite;*/
+}
+/* @keyframes "blink" {
+  from, to { background: transparent; }
+  50% {background: black; }
+}
+@-webkit-keyframes "blink" {
+  from, to { background: transparent; }
+  50% {background: black; }
+} */

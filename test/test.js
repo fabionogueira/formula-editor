@@ -113,61 +113,30 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var Editor = function () {
     function Editor(element) {
-        var _this = this;
-
         var config = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
         _classCallCheck(this, Editor);
 
-        element.init = function () {
-            var body = void 0;
-
-            delete element.init;
-
-            _this._background = element.children[0].children[0];
-            _this._editor = element.children[0].children[1];
-
-            _this._initIframe(_this._background, _this._backgroundStyle);
-            _this._initIframe(_this._editor, _this._editorStyle);
-
-            body = _this._editor.contentDocument.body;
-            body.innerHTML = '<pre style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:1;margin:0;padding:6px;overflow:auto" spellcheck="false" contenteditable="true"></pre>\n                 <div class="caret" style="left:6px;top:4px"></div>';
-
-            _this._caret = body.children[1];
-
-            _this._showCaret(false);
-            _this._initEvents();
-        };
-
         this._config(config);
 
-        element.innerHTML = '<div class="formula-editor" style="position:relative;width:100%;height:100%">\n            <iframe frameborder="0" class="formula-1"></iframe>\n            <iframe frameborder="0" class="formula-2" onload="this.parentNode.parentNode.init();"></iframe>\n        </div>';
+        element.innerHTML = '<div class="formula-editor" style="position:relative;width:100%;height:100%">\n                <pre class="formula-editor-pre"></pre>\n                <textarea class="formula-editor-textarea" spellcheck="false"></textarea>\n                <div class="caret" style="left:6px;top:4px"></div>\n            </div>';
 
         this._onTip = config.onTip;
         this._functions = {};
         this._fields = {};
         this._tokenizer = new _tokenizer2.default();
         this._activeCaretRange = null;
+        this._pre = element.querySelector('pre');
+        this._textarea = element.querySelector('textarea');
+        this._caret = element.querySelector('.caret');
+
+        this._showCaret(false);
+        this._initEvents();
     }
 
     _createClass(Editor, [{
-        key: '_initIframe',
-        value: function _initIframe(frameElement, styles) {
-            var doc = frameElement.contentDocument;
-            var style = doc.createElement('style');
-
-            style.type = 'text/css';
-            style.innerHTML = '* {font-family: monospace; }\n' + (styles ? styles : '');
-
-            frameElement.contentDocument.body.style.overflow = 'hidden';
-            frameElement.contentDocument.head.appendChild(style);
-        }
-    }, {
         key: '_config',
-        value: function _config(config) {
-            this._backgroundStyle = '\n            .string{\n                color: #FFC107\n            }\n            .function, .field, .context_var{\n                color: #c0c0c0\n            }\n            .function.validate{\n                color:blue\n            }\n            .field-start, .field-end, .field.validate{\n                color:#009688\n            }\n            .context_var.validate{\n                font-weight: bold;\n                color: #000;\n            }\n            .operator{\n                color: #9C27B0;\n            }\n            .number.unvalidate {\n                color: red;\n                /* background-image: url(wiggle.png);\n                background-repeat: repeat-x;\n                background-position: bottom; */\n            }\n            pre{\n                padding:0;margin:0\n            }\n            body{\n                padding:6px;margin:0\n            }\n            ';
-            this._editorStyle = '\n            .caret {\n                position:absolute;\n                height:19px;\n                width:1px;\n                background: black;\n                /*animation: 1s blink step-end infinite;\n                -webkit-animation: 1s blink step-end infinite;*/\n            }\n            @keyframes "blink" {\n              from, to { background: transparent; }\n              50% {background: black; }\n            }\n            @-webkit-keyframes "blink" {\n              from, to { background: transparent; }\n              50% {background: black; }\n            }\n            * {\n                color:transparent\n            }\n            ';
-        }
+        value: function _config(config) {}
     }, {
         key: '_showCaret',
         value: function _showCaret(show) {
@@ -176,129 +145,115 @@ var Editor = function () {
     }, {
         key: '_initEvents',
         value: function _initEvents() {
-            var _this2 = this;
+            var _this = this;
 
-            var doc = this._editor.contentDocument;
-            var body = doc.body;
+            var textarea = this._textarea;
+            var pre = this._pre;
 
-            body.children[0].onscroll = function () {
-                _this2._background.contentDocument.body.scrollTop = body.children[0].scrollTop;
-                _this2._background.contentDocument.body.scrollLeft = body.children[0].scrollLeft;
+            textarea.onscroll = function () {
+                pre.scrollTop = textarea.scrollTop;
+                pre.scrollLeft = textarea.scrollLeft;
 
-                _this2._updateCaret();
+                _this._updateCaret();
             };
-            body.children[0].onblur = function () {
-                _this2._showCaret(false);
+            textarea.onblur = function () {
+                _this._showCaret(false);
             };
-            body.children[0].onfocus = function () {
-                _this2._showCaret(true);
+            textarea.onfocus = function () {
+                _this._showCaret(true);
             };
-
-            doc.onkeyup = function () {
+            textarea._onkeyup = function () {
                 var t = void 0,
                     i = void 0,
                     o = void 0,
                     n = void 0,
                     s = void 0,
-                    b = void 0;
+                    b = void 0,
+                    e = void 0;
                 var tip = '';
 
-                _this2._updateCaret();
+                _this._updateCaret();
 
-                t = _this2._getParamDefinition(_this2._activeCaretRange.startOffset - 1);
+                t = _this._getParamDefinition(_this._activeCaretRange.caretPos - 1);
 
                 if (t) {
-                    if (t.type == 'function') {
-                        for (i in _this2._functions) {
-                            tip += '<p>' + i + '</p>';
+                    if (t.type == 'function' && !t.validate) {
+                        for (i in _this._functions) {
+                            if (i.startsWith(t.value)) {
+                                tip += '<p style="' + (i == t.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
+                            }
                         }
-                    } else if (t.type == 'field-start' || t.type == 'field') {
-                        for (i in _this2._fields) {
-                            tip += '<p>' + i + '</p>';
+                    } else if (t.type == 'field' && !t.validate) {
+                        for (i in _this._fields) {
+                            n = i.substring(0, i.length - 1);
+                            if (i.startsWith(t.value)) {
+                                tip += '<p style="' + (n == t.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
+                            }
                         }
                     } else if (t.context) {
-                        o = _this2._functions[t.context];
+                        o = _this._functions[t.context];
                         if (o) {
                             tip = t.context + '(';
                             s = '';
 
                             if (o.arguments) {
+                                e = false;
                                 for (i = 0; i < o.arguments.length; i++) {
                                     n = o.arguments[i].name;
                                     b = i == t.argumentIndex;
-                                    if (!b && n == '...') {
-                                        b = true;
+
+                                    if (b) {
+                                        e = true;
                                     }
-                                    tip += s + (b ? '<b style="background:#f3dd9b">' + n + '</b>' : n);
+
+                                    tip += s + (b || i == o.arguments.length - 1 && !e && o.arguments[i].several ? '<b style="background:#f3dd9b">' + n + '</b>' : n);
                                     s = '; ';
                                 }
+
                                 tip += ')';
                             }
                         }
                     }
                 }
 
-                if (_this2._onTip) {
-                    _this2._onTip(tip);
+                if (_this._onTip) {
+                    _this._onTip(tip);
                 }
             };
-            doc.onkeydown = function (event) {
+            textarea._onkeydown = function (event) {
                 if (event.keyCode == 9) {
                     event.preventDefault();
-                    return doc.execCommand('insertText', false, '    ');
+                    return document.execCommand('insertText', false, '    ');
                 }
 
-                _this2._updateCaret();
+                _this._updateCaret();
             };
-            doc.onmousedown = function () {
+            textarea._onmousedown = function () {
                 setTimeout(function () {
-                    _this2._updateCaret();
+                    _this._updateCaret();
                 }, 100);
             };
-            doc.onpaste = function (event) {
+            textarea._onpaste = function (event) {
                 var text = event.clipboardData.getData("text/plain");
 
                 event.preventDefault();
-                doc.execCommand('insertText', false, text);
+                document.execCommand('insertText', false, text);
             };
-            doc.oninput = function () {
-                _this2._updateCaret();
-                _this2._renderBackground();
+            textarea._oninput = function () {
+                _this._updateCaret();
+                _this._renderBackground();
             };
         }
     }, {
         key: '_updateCaret',
         value: function _updateCaret() {
-            var doc = this._editor.contentDocument.body.ownerDocument || this._editor.contentDocument.body.document;
-            var win = doc.defaultView || doc.parentWindow;
-            var sel = void 0,
-                range = void 0;
-            var rect = void 0;
+            // let rect
+            // let range = getCursorPos(this._textarea)
 
-            if (typeof win.getSelection != "undefined") {
-                sel = win.getSelection();
-                if (sel.rangeCount) {
-                    range = sel.getRangeAt(0);
-                }
-            } else if ((sel = doc.selection) && sel.type != "Control") {
-                range = doc.selection.createRange();
-            }
+            // rect = range.getBoundingClientRect()
 
-            this._activeCaretRange = range;
-            rect = range.getBoundingClientRect();
-
-            if (doc.body.innerText == '') {
-                rect = { x: 6, y: 6 };
-            } else if (rect.x == 0 && rect.y == 0) {
-                rect = range.startContainer.getBoundingClientRect();
-            }
-
-            if (rect.x == 0 && rect.y == 0) {
-                rect = { x: 6, y: 6 };
-            }
-
-            this._caret.style.top = rect.y - 2 + 'px';
-            this._caret.style.left = rect.x + 'px';
+            // this._caret.style.top = (rect.y-2) + 'px'
+            // this._caret.style.left = rect.x + 'px'
         }
     }, {
         key: '_getParamDefinition',
@@ -311,6 +266,7 @@ var Editor = function () {
                 token = positions[position];
 
                 if (token) {
+                    this._validateToken(token);
                     return token;
                 }
 
@@ -318,25 +274,49 @@ var Editor = function () {
             }
         }
     }, {
+        key: '_validateToken',
+        value: function _validateToken(token) {
+            var tokens = this._tokenizer.getTokens();
+            var j = token.index + 1;
+            var i = void 0,
+                tk = void 0;
+
+            token.validate = false;
+
+            if (token.type == 'function') {
+                for (i = j; i < tokens.length; i++) {
+                    tk = tokens[i];
+
+                    if (tk.value == '(') {
+                        return token.validate = true;
+                    } else if (tk.type != 'blank') {
+                        return token.validate = false;
+                    }
+                }
+            } else if (token.type == 'field') {
+                token.validate = this._fields[token.value] ? true : false;
+            }
+        }
+    }, {
         key: '_renderBackground',
         value: function _renderBackground() {
-            var _this3 = this;
+            var _this2 = this;
 
-            var content = this._editor.contentDocument.body.firstChild.innerText;
+            var content = this._textarea.contentDocument.body.firstChild.innerText;
             var tokens = this._tokenizer.execute(content);
             var html = '';
 
             tokens.forEach(function (token) {
                 if (token.type == 'function') {
-                    token.validate = _this3._functions[token.value];
+                    token.validate = _this2._functions[token.value] ? true : false;
                 } else if (token.type == 'field') {
-                    token.validate = _this3._fields[token.value];
+                    token.validate = _this2._fields[token.value] ? true : false;
                 }
 
-                html += _this3._formatToken(token);
+                html += _this2._formatToken(token);
             });
 
-            this._background.contentDocument.body.innerHTML = '<pre>' + html + '</pre>';
+            this._pre.contentDocument.body.innerHTML = '<pre>' + html + '</pre>';
         }
     }, {
         key: '_formatToken',
@@ -364,6 +344,40 @@ var Editor = function () {
 }();
 
 exports.default = Editor;
+
+
+function getCursorPos(input) {
+    var len = void 0,
+        sel = void 0,
+        caretPos = void 0,
+        range = void 0;
+
+    sel = document['selection'].createRange();
+
+    if (sel.parentElement() === input) {
+        range = input.createTextRange();
+        range.moveToBookmark(sel.getBookmark());
+        for (len = 0; range.compareEndPoints("EndToStart", range) > 0; range.moveEnd("character", -1)) {
+            len++;
+        }
+
+        range.setEndPoint("StartToStart", input.createTextRange());
+
+        for (caretPos = { start: 0, end: len }; range.compareEndPoints("EndToStart", range) > 0; range.moveEnd("character", -1)) {
+            caretPos.start++;
+            caretPos.end++;
+        }
+
+        range.caretPos = {
+            start: input.selectionStart,
+            end: input.selectionEnd
+        };
+
+        return range;
+    }
+
+    return null;
+}
 
 /***/ }),
 
@@ -453,6 +467,8 @@ var Tokenizer = function () {
     }, {
         key: 'createToken',
         value: function createToken(position, token) {
+            token.index = this._tokens.length;
+
             this._tokens.push(token);
             this._tokensPos[position] = token;
         }
@@ -540,42 +556,23 @@ var Tokenizer = function () {
     }, {
         key: 'readField',
         value: function readField(context, ch, argumentIndex) {
-            var value = '';
+            var value = ch;
             var position = this._tokenIndex - 1;
 
-            this.createToken(position, {
-                value: '{',
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'field-start'
-            });
-
             while (ch = this.nextChar()) {
+                value += ch;
+
                 if (ch == '}') {
                     break;
                 }
-
-                value += ch;
             }
 
-            if (value) {
-                this.createToken(position + 1, {
-                    value: value,
-                    context: context,
-                    argumentIndex: argumentIndex,
-                    type: 'field'
-                });
-            }
-
-            if (ch == '}') {
-                position = this._tokenIndex - 1;
-                this.createToken(position, {
-                    value: '}',
-                    context: context,
-                    argumentIndex: argumentIndex,
-                    type: 'field-end'
-                });
-            }
+            this.createToken(position, {
+                value: value,
+                context: context,
+                argumentIndex: argumentIndex,
+                type: 'field'
+            });
         }
     }, {
         key: 'readContextVar',
@@ -779,6 +776,11 @@ var Tokenizer = function () {
         value: function getPositions() {
             return this._tokensPos;
         }
+    }, {
+        key: 'getTokens',
+        value: function getTokens() {
+            return this._tokens;
+        }
     }]);
 
     return Tokenizer;
@@ -839,8 +841,9 @@ editor.setFunctions({
             type: 'field',
             description: 'campo a definir o valor'
         }, {
-            name: '...',
+            name: '[optional ...]',
             type: 'field',
+            several: true,
             description: 'campo a definir o valor'
         }]
     },
@@ -863,8 +866,8 @@ editor.setFunctions({
 });
 
 editor.setFields({
-    a: 1,
-    bb: 1
+    '{a}': 1,
+    '{bb}': 1
 });
 
 /***/ })

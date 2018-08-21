@@ -49,6 +49,8 @@ export default class Tokenizer{
     }
 
     createToken(position,token){
+        token.index = this._tokens.length
+        
         this._tokens.push(token)
         this._tokensPos[position] = token
     }
@@ -133,42 +135,23 @@ export default class Tokenizer{
     }
 
     readField(context, ch, argumentIndex){
-        let value = ''
+        let value = ch
         let position = this._tokenIndex - 1
-        
-        this.createToken(position, {
-            value: '{',
-            context,
-            argumentIndex,
-            type: 'field-start',
-        })
 
         while (ch = this.nextChar()){
+            value += ch
+
             if(ch == '}') {
                 break
             }
-    
-            value += ch
         }
 
-        if (value){
-            this.createToken(position + 1, {
-                value,
-                context,
-                argumentIndex,
-                type: 'field'
-            })
-        }
-
-        if (ch == '}'){
-            position = this._tokenIndex - 1
-            this.createToken(position, {
-                value: '}',
-                context,
-                argumentIndex,
-                type: 'field-end',
-            })
-        }
+        this.createToken(position, {
+            value,
+            context,
+            argumentIndex,
+            type: 'field'
+        })
     }
 
     readContextVar(context, ch, argumentIndex){
@@ -366,6 +349,10 @@ export default class Tokenizer{
 
     getPositions(){
         return this._tokensPos
+    }
+
+    getTokens(){
+        return this._tokens
     }
 }
 

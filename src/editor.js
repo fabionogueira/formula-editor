@@ -5,109 +5,30 @@ import Tokenizer from './tokenizer'
 
 export default class Editor{
     constructor(element, config = {}){
-        element.init = () => {
-            let body
-
-            delete(element.init)
-
-            this._background = element.children[0].children[0]
-            this._editor = element.children[0].children[1]
-
-            this._initIframe(this._background, this._backgroundStyle)
-            this._initIframe(this._editor, this._editorStyle)
-
-            body = this._editor.contentDocument.body
-            body.innerHTML = 
-                `<pre style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:1;margin:0;padding:6px;overflow:auto" spellcheck="false" contenteditable="true"></pre>
-                 <div class="caret" style="left:6px;top:4px"></div>`
-
-            this._caret = body.children[1]
-            
-            this._showCaret(false)
-            this._initEvents()
-        }
-
         this._config(config)
 
         element.innerHTML = 
-        `<div class="formula-editor" style="position:relative;width:100%;height:100%">
-            <iframe frameborder="0" class="formula-1"></iframe>
-            <iframe frameborder="0" class="formula-2" onload="this.parentNode.parentNode.init();"></iframe>
-        </div>`
+            `<div class="formula-editor" style="position:relative;width:100%;height:100%">
+                <pre class="formula-editor-pre"></pre>
+                <textarea class="formula-editor-textarea" spellcheck="false"></textarea>
+                <div class="caret" style="left:6px;top:4px"></div>
+            </div>`
 
         this._onTip = config.onTip
         this._functions = {}
         this._fields = {}
         this._tokenizer = new Tokenizer()
         this._activeCaretRange = null
-    }
-
-    _initIframe(frameElement, styles){
-        let doc = frameElement.contentDocument;
-        let style = doc.createElement('style')
+        this._pre = element.querySelector('pre')
+        this._textarea = element.querySelector('textarea')
+        this._caret = element.querySelector('.caret')
         
-        style.type = 'text/css';
-        style.innerHTML = `* {font-family: monospace; }\n${styles ? styles : ''}`;
-        
-        frameElement.contentDocument.body.style.overflow = 'hidden'
-        frameElement.contentDocument.head.appendChild(style)
+        this._showCaret(false)
+        this._initEvents()
     }
 
     _config(config){
-        this._backgroundStyle = `
-            .string{
-                color: #FFC107
-            }
-            .function, .field, .context_var{
-                color: #c0c0c0
-            }
-            .function.validate{
-                color:blue
-            }
-            .field-start, .field-end, .field.validate{
-                color:#009688
-            }
-            .context_var.validate{
-                font-weight: bold;
-                color: #000;
-            }
-            .operator{
-                color: #9C27B0;
-            }
-            .number.unvalidate {
-                color: red;
-                /* background-image: url(wiggle.png);
-                background-repeat: repeat-x;
-                background-position: bottom; */
-            }
-            pre{
-                padding:0;margin:0
-            }
-            body{
-                padding:6px;margin:0
-            }
-            `
-        this._editorStyle = `
-            .caret {
-                position:absolute;
-                height:19px;
-                width:1px;
-                background: black;
-                /*animation: 1s blink step-end infinite;
-                -webkit-animation: 1s blink step-end infinite;*/
-            }
-            @keyframes "blink" {
-              from, to { background: transparent; }
-              50% {background: black; }
-            }
-            @-webkit-keyframes "blink" {
-              from, to { background: transparent; }
-              50% {background: black; }
-            }
-            * {
-                color:transparent
-            }
-            `
+        
     }
 
     _showCaret(show){
@@ -115,38 +36,42 @@ export default class Editor{
     }
 
     _initEvents(){
-        let doc = this._editor.contentDocument
-        let body= doc.body
+        let textarea = this._textarea
+        let pre = this._pre
 
-        body.children[0].onscroll = () => {
-            this._background.contentDocument.body.scrollTop = body.children[0].scrollTop
-            this._background.contentDocument.body.scrollLeft = body.children[0].scrollLeft
+        textarea.onscroll = () => {
+            pre.scrollTop = textarea.scrollTop
+            pre.scrollLeft = textarea.scrollLeft
 
             this._updateCaret()
         }
-        body.children[0].onblur = () => {
+        textarea.onblur = () => {
             this._showCaret(false)
         }
-        body.children[0].onfocus = () => {
+        textarea.onfocus = () => {
             this._showCaret(true)
         }
-
-        doc.onkeyup = () => {
-            let t, i, o, n, s, b
+        textarea._onkeyup = () => {
+            let t, i, o, n, s, b, e
             let tip = ''
     
             this._updateCaret()
     
-            t = this._getParamDefinition(this._activeCaretRange.startOffset-1)
+            t = this._getParamDefinition(this._activeCaretRange.caretPos - 1)
             
             if (t){
-                if (t.type=='function'){
+                if (t.type=='function' && !t.validate){
                     for (i in this._functions){
-                        tip += `<p>${i}</p>`
+                        if (i.startsWith(t.value)){
+                            tip += `<p style="${i==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
+                        }
                     }
-                } else if (t.type=='field-start' || t.type=='field'){
+                } else if (t.type=='field' && !t.validate){
                     for (i in this._fields){
-                        tip += `<p>${i}</p>`
+                        n = i.substring(0, i.length - 1)
+                        if (i.startsWith(t.value)){
+                            tip += `<p style="${n==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
+                        }
                     }
                 } else if (t.context){
                     o = this._functions[t.context]
@@ -155,15 +80,19 @@ export default class Editor{
                         s = ''
                         
                         if (o.arguments){
+                            e = false
                             for (i=0; i<o.arguments.length; i++){
                                 n = o.arguments[i].name
                                 b = (i == t.argumentIndex)
-                                if (!b && n == '...'){
-                                    b = true
+                                
+                                if (b){
+                                    e = true
                                 }
-                                tip += s + ( b ? `<b style="background:#f3dd9b">${n}</b>` : n)
+                                
+                                tip += s + ( b || (i==o.arguments.length-1 && !e && o.arguments[i].several) ? `<b style="background:#f3dd9b">${n}</b>` : n)
                                 s = '; '
                             }
+
                             tip += ')'
                         }
                     }
@@ -175,61 +104,39 @@ export default class Editor{
                 this._onTip(tip)
             }
         }
-        doc.onkeydown = (event) => {
+        textarea._onkeydown = (event) => {
             if (event.keyCode == 9){
                 event.preventDefault()
-                return doc.execCommand('insertText', false, '    ')
+                return document.execCommand('insertText', false, '    ')
             }
             
             this._updateCaret()
         }
-        doc.onmousedown = () => {
+        textarea._onmousedown = () => {
             setTimeout(() => {
                 this._updateCaret()
             }, 100)
         }
-        doc.onpaste = (event) => {
+        textarea._onpaste = (event) => {
             let text = event.clipboardData.getData("text/plain")
     
             event.preventDefault()
-            doc.execCommand('insertText', false, text)
+            document.execCommand('insertText', false, text)
         }    
-        doc.oninput = () => {
+        textarea._oninput = () => {
             this._updateCaret()
             this._renderBackground()
         }
     }
 
     _updateCaret() {
-        let doc = this._editor.contentDocument.body.ownerDocument || this._editor.contentDocument.body.document
-        let win = doc.defaultView || doc.parentWindow
-        let sel, range
-        let rect
-
-        if (typeof win.getSelection != "undefined") {
-            sel = win.getSelection();
-            if (sel.rangeCount) {
-                range = sel.getRangeAt(0);
-            }
-        } else if ( (sel = doc.selection) && sel.type != "Control") {
-            range = doc.selection.createRange();
-        }
-
-        this._activeCaretRange = range
-        rect = range.getBoundingClientRect()
-
-        if (doc.body.innerText==''){
-            rect = {x:6, y:6}
-        } else if (rect.x==0 && rect.y==0){
-            rect = range.startContainer.getBoundingClientRect()
-        }
-
-        if (rect.x==0 && rect.y==0){
-            rect = {x:6, y:6}
-        }
-
-        this._caret.style.top = (rect.y-2) + 'px'
-        this._caret.style.left = rect.x + 'px'
+        // let rect
+        // let range = getCursorPos(this._textarea)
+        
+        // rect = range.getBoundingClientRect()
+        
+        // this._caret.style.top = (rect.y-2) + 'px'
+        // this._caret.style.left = rect.x + 'px'
     }
 
     _getParamDefinition(position){
@@ -241,6 +148,7 @@ export default class Editor{
             token = positions[position]
             
             if (token){
+                this._validateToken(token)
                 return token
             }
     
@@ -248,22 +156,44 @@ export default class Editor{
         }
     }
 
+    _validateToken(token){
+        let tokens = this._tokenizer.getTokens()
+        let j = token.index + 1
+        let i, tk
+
+        token.validate = false
+
+        if (token.type=='function'){
+            for (i=j; i<tokens.length; i++){
+                tk = tokens[i]
+                
+                if (tk.value == '('){
+                    return token.validate = true
+                } else if (tk.type != 'blank'){
+                    return token.validate = false
+                }
+            }
+        } else if (token.type=='field'){
+            token.validate = this._fields[token.value] ? true : false
+        }
+    }
+
     _renderBackground(){
-        let content = this._editor.contentDocument.body.firstChild.innerText
+        let content = this._textarea.contentDocument.body.firstChild.innerText
         let tokens = this._tokenizer.execute(content)
         let html = ''
     
         tokens.forEach(token => {
             if (token.type=='function'){
-                token.validate = this._functions[token.value]
+                token.validate = this._functions[token.value] ? true : false
             } else if (token.type=='field'){
-                token.validate = this._fields[token.value]
+                token.validate = this._fields[token.value] ? true : false
             }
 
             html += this._formatToken(token)
         })
     
-        this._background.contentDocument.body.innerHTML = '<pre>' + html + '</pre>'
+        this._pre.contentDocument.body.innerHTML = '<pre>' + html + '</pre>'
     }
 
     _formatToken(token){
@@ -282,4 +212,39 @@ export default class Editor{
     setFields(fields){
         this._fields = fields
     }
+}
+
+function getCursorPos(input) {
+    let len, sel, caretPos, range
+
+    sel = document['selection'].createRange();
+    
+    if (sel.parentElement() === input) {
+        range = input.createTextRange();
+        range.moveToBookmark(sel.getBookmark());
+        for (len = 0;
+                    range.compareEndPoints("EndToStart", range) > 0;
+                    range.moveEnd("character", -1)) {
+            len++;
+        }
+
+        range.setEndPoint("StartToStart", input.createTextRange());
+        
+        for (caretPos = { start: 0, end: len };
+                    range.compareEndPoints("EndToStart", range) > 0;
+                    range.moveEnd("character", -1)) {
+            caretPos.start++;
+            caretPos.end++;
+        }
+        
+        range.caretPos = {
+            start: input.selectionStart,
+            end: input.selectionEnd
+        }
+
+        return range
+    }
+
+
+    return null;
 }

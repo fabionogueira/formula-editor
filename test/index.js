@@ -45,8 +45,9 @@ editor.setFunctions({
                 description: 'campo a definir o valor'
             },
             {
-                name: '...', 
+                name: '[optional ...]', 
                 type: 'field',
+                several: true,
                 description: 'campo a definir o valor'
             }
         ]
@@ -74,6 +75,6 @@ editor.setFunctions({
 })
 
 editor.setFields({
-    a:1,
-    bb:1
+    '{a}':1,
+    '{bb}':1
 })
