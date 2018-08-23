@@ -21,6 +21,7 @@ export default class Editor{
         this._fields = {}
         
         this._onTip = config.onTip
+        this._onChange = config.onChange
         
         this._initEvents()
     }
@@ -65,6 +66,9 @@ export default class Editor{
         }   
         textarea.oninput = () => {
             this._render()
+            if (this._onChange){
+                this._onChange(this._textarea.value)
+            }
         }
     }
 
@@ -193,4 +197,3 @@ export default class Editor{
         this._fields = fields
     }
 }
- window['xx'] = 0

@@ -129,6 +129,7 @@ var Editor = function () {
         this._fields = {};
 
         this._onTip = config.onTip;
+        this._onChange = config.onChange;
 
         this._initEvents();
     }
@@ -178,6 +179,9 @@ var Editor = function () {
             };
             textarea.oninput = function () {
                 _this._render();
+                if (_this._onChange) {
+                    _this._onChange(_this._textarea.value);
+                }
             };
         }
     }, {
@@ -326,8 +330,6 @@ var Editor = function () {
 }();
 
 exports.default = Editor;
-
-window['xx'] = 0;
 
 /***/ }),
 
