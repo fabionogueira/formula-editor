@@ -22,6 +22,9 @@ export default class Editor{
         
         this._onTip = config.onTip
         this._onChange = config.onChange
+
+        this.onchange = null
+        this.onblur = null
         
         this._initEvents()
     }
@@ -66,9 +69,15 @@ export default class Editor{
         }   
         textarea.oninput = () => {
             this._render()
+            
             if (this._onChange){
                 this._onChange(this._textarea.value)
             }
+            
+            if (this.onchange) this.onchange(this._textarea.value)
+        }
+        textarea.onblur = () => {
+            if (this.onblur) this.onblur()
         }
     }
 
@@ -195,5 +204,19 @@ export default class Editor{
 
     setFields(fields){
         this._fields = fields
+    }
+
+    getValue(){
+        return this._textarea.value
+    }
+
+    setValue(value){
+        this._textarea.value = value
+        this._render()
+    }
+
+    setDisabled(value){
+        this._textarea.disabled = value
+        value ? this._pre.setAttribute('disabled', '') : this._pre.removeAttribute('disabled')
     }
 }
