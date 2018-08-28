@@ -102,7 +102,6 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); // @ts-check
 
-
 var _tokenizer = __webpack_require__(/*! ./tokenizer */ "./src/tokenizer.js");
 
 var _tokenizer2 = _interopRequireDefault(_tokenizer);
@@ -123,13 +122,15 @@ var Editor = function () {
 
         this._pre = element.querySelector('pre');
         this._textarea = element.querySelector('textarea');
-        this._tokenizer = new _tokenizer2.default();
 
         this._functions = {};
         this._fields = {};
 
         this._onTip = config.onTip;
         this._onChange = config.onChange;
+
+        this.onchange = null;
+        this.onblur = null;
 
         this._initEvents();
     }
@@ -172,130 +173,132 @@ var Editor = function () {
                 }
             };
             textarea.onkeyup = function () {
-                _this._generateTip();
+                // this._generateTip()
             };
             textarea.onmouseup = function () {
-                _this._generateTip();
+                // this._generateTip()
             };
             textarea.oninput = function () {
                 _this._render();
+
                 if (_this._onChange) {
                     _this._onChange(_this._textarea.value);
                 }
+
+                if (_this.onchange) _this.onchange(_this._textarea.value);
+            };
+            textarea.onblur = function () {
+                if (_this.onblur) _this.onblur();
             };
         }
-    }, {
-        key: '_generateTip',
-        value: function _generateTip() {
-            var t = void 0,
-                i = void 0,
-                o = void 0,
-                n = void 0,
-                s = void 0,
-                b = void 0,
-                e = void 0;
-            var tip = '';
 
-            t = this._getParamDefinition(this._textarea.selectionStart - 1);
+        // _generateTip(){
+        //     let t, i, o, n, s, b, e
+        //     let tip = ''
 
-            if (t) {
-                if (t.type == 'function' && !t.validate) {
-                    for (i in this._functions) {
-                        if (i.startsWith(t.value)) {
-                            tip += '<p style="' + (i == t.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
-                        }
-                    }
-                } else if (t.type == 'field' && !t.validate) {
-                    for (i in this._fields) {
-                        n = i.substring(0, i.length - 1);
-                        if (i.startsWith(t.value)) {
-                            tip += '<p style="' + (n == t.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
-                        }
-                    }
-                } else if (t.context) {
-                    o = this._functions[t.context];
-                    if (o) {
-                        tip = t.context + '(';
-                        s = '';
+        //     t = this._getParamDefinition(this._textarea.selectionStart -1)
 
-                        if (o.arguments) {
-                            e = false;
-                            for (i = 0; i < o.arguments.length; i++) {
-                                n = o.arguments[i].name;
-                                b = i == t.argumentIndex;
+        //     if (t){
+        //         if (t.type=='function' && !t.validate){
+        //             for (i in this._functions){
+        //                 if (i.startsWith(t.value)){
+        //                     tip += `<p style="${i==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
+        //                 }
+        //             }
+        //         } else if (t.type=='field' && !t.validate){
+        //             for (i in this._fields){
+        //                 n = i.substring(0, i.length - 1)
+        //                 if (i.startsWith(t.value)){
+        //                     tip += `<p style="${n==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
+        //                 }
+        //             }
+        //         } else if (t.context){
+        //             o = this._functions[t.context]
+        //             if (o){
+        //                 tip = t.context + '('
+        //                 s = ''
 
-                                if (b) {
-                                    e = true;
-                                }
+        //                 if (o.arguments){
+        //                     e = false
+        //                     for (i=0; i<o.arguments.length; i++){
+        //                         n = o.arguments[i].name
+        //                         b = (i == t.argumentIndex)
 
-                                tip += s + (b || i == o.arguments.length - 1 && !e && o.arguments[i].several ? '<b style="background:#f3dd9b">' + n + '</b>' : n);
-                                s = '; ';
-                            }
+        //                         if (b){
+        //                             e = true
+        //                         }
 
-                            tip += ')';
-                        }
-                    }
-                }
-            }
+        //                         tip += s + ( b || (i==o.arguments.length-1 && !e && o.arguments[i].several) ? `<b style="background:#f3dd9b">${n}</b>` : n)
+        //                         s = '; '
+        //                     }
 
-            if (this._onTip) {
-                this._onTip(tip);
-            }
-        }
-    }, {
-        key: '_getParamDefinition',
-        value: function _getParamDefinition(position) {
-            var token = void 0;
-            var positions = this._tokenizer.getPositions();
+        //                     tip += ')'
+        //                 }
+        //             }
 
-            while (position >= 0) {
-                token = positions[position];
+        //         }
+        //     }
 
-                if (token && token.type != 'blank') {
-                    this._validateToken(token);
-                    return token;
-                }
+        //     if (this._onTip){
+        //         this._onTip(tip)
+        //     }
+        // }
 
-                position--;
-            }
-        }
-    }, {
-        key: '_validateToken',
-        value: function _validateToken(token) {
-            var tokens = this._tokenizer.getTokens();
-            var j = token.index + 1;
-            var i = void 0,
-                tk = void 0;
+        // _getParamDefinition(position){
+        //     let token
+        //     let positions = this._tokenizer.getPositions()
 
-            token.validate = false;
+        //     while (position >= 0){
+        //         token = positions[position]
 
-            if (token.type == 'function') {
-                for (i = j; i < tokens.length; i++) {
-                    tk = tokens[i];
+        //         if (token && token.type != 'blank'){
+        //             this._validateToken(token)
+        //             return token
+        //         }
 
-                    if (tk.value == '(') {
-                        return token.validate = this._functions[token.value] ? true : false;
-                    } else if (tk.type != 'blank') {
-                        return token.validate = false;
-                    }
-                }
-            } else if (token.type == 'field') {
-                token.validate = this._fields[token.value] ? true : false;
-            }
-        }
+        //         position--
+        //     }
+        // }
+
+        // _validateToken(token){
+        //     let tokens = this._tokenizer.getTokens()
+        //     let j = token.index + 1
+        //     let i, tk
+
+        //     token.validate = false
+
+        //     if (token.type=='function'){
+        //         for (i=j; i<tokens.length; i++){
+        //             tk = tokens[i]
+
+        //             if (tk.value == '('){
+        //                 return token.validate = this._functions[token.value] ? true : false
+        //             } else if (tk.type != 'blank'){
+        //                 return token.validate = false
+        //             }
+        //         }
+        //     } else if (token.type=='field'){
+        //         token.validate = this._fields[token.value] ? true : false
+        //     }
+        // }
+
     }, {
         key: '_render',
         value: function _render() {
             var _this2 = this;
 
-            var tokens = this._tokenizer.execute(this._textarea.value);
+            var tokens = (0, _tokenizer2.default)(this._textarea.value).all();
             var html = '';
 
             tokens.forEach(function (token) {
-                if (token.type == 'function') {
+                if (token.type == 'FUNCTION') {
                     token.validate = _this2._functions[token.value] ? true : false;
-                } else if (token.type == 'field') {
+                } else if (token.type == 'IDENTIFIER') {
                     token.validate = _this2._fields[token.value] ? true : false;
+                } else if (token.type == 'STRING') {
+                    token.value = '"' + token.value + '"';
+                } else if (token.type == 'UNCOMPLETE_STRING') {
+                    token.value = '"' + token.value;
                 }
 
                 html += _this2._formatToken(token);
@@ -308,9 +311,10 @@ var Editor = function () {
         key: '_formatToken',
         value: function _formatToken(token) {
             var r = token.value;
-            var cls = token.type + (token.validate ? ' validate' : ' unvalidate');
+            var cls = token.type + (token.validate === false ? ' UNVALIDATE' : '');
+            var space = '                                    ';
 
-            r = '<span class="' + cls + '">' + r + '</span>';
+            r = '<span class="' + cls + '">' + (space.substring(0, token.ws.before) + r) + '</span>';
 
             return r;
         }
@@ -323,6 +327,23 @@ var Editor = function () {
         key: 'setFields',
         value: function setFields(fields) {
             this._fields = fields;
+        }
+    }, {
+        key: 'getValue',
+        value: function getValue() {
+            return this._textarea.value;
+        }
+    }, {
+        key: 'setValue',
+        value: function setValue(value) {
+            this._textarea.value = value;
+            this._render();
+        }
+    }, {
+        key: 'setDisabled',
+        value: function setDisabled(value) {
+            this._textarea.disabled = value;
+            value ? this._pre.setAttribute('disabled', '') : this._pre.removeAttribute('disabled');
         }
     }]);
 
@@ -346,399 +367,327 @@ exports.default = Editor;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+/**
+  * Simple JavaScript tokenizer (not a full parser!!!)
+  *
+  * Portions taken from Narcissus by Brendan Eich <brendan@mozilla.org>.
+  */
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+/* jshint evil: true, regexdash: false, regexp: false */
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+var KEYWORDS = ['break', 'case', 'catch', 'const', 'continue', 'debugger', 'default', 'delete', 'do', 'else', 'enum', 'false', 'finally', 'for', 'function', 'if', 'in', 'instanceof', 'new', 'null', 'return', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void', 'while', 'with'];
 
-// @ts-check
+var OPERATORS = {
+    '>>>=': 'ASSIGN_URSH',
+    '>>=': 'ASSIGN_RSH',
+    '<<=': 'ASSIGN_LSH',
+    '|=': 'ASSIGN_BITWISE_OR',
+    '^=': 'ASSIGN_BITWISE_XOR',
+    '&=': 'ASSIGN_BITWISE_AND',
+    '+=': 'ASSIGN_PLUS',
+    '-=': 'ASSIGN_MINUS',
+    '*=': 'ASSIGN_MUL',
+    '/=': 'ASSIGN_DIV',
+    '%=': 'ASSIGN_MOD',
+    ';': 'SEMICOLON',
+    ',': 'COMMA',
+    '?': 'HOOK',
+    ':': 'COLON',
+    '||': 'OR',
+    '&&': 'AND',
+    '|': 'BITWISE_OR',
+    '^': 'BITWISE_XOR',
+    '&': 'BITWISE_AND',
+    '===': 'STRICT_EQ',
+    '==': 'EQ',
+    '=': 'ASSIGN',
+    '!==': 'STRICT_NE',
+    '!=': 'NE',
+    '<<': 'LSH',
+    '<=': 'LE',
+    '<': 'LT',
+    '>>>': 'URSH',
+    '>>': 'RSH',
+    '>=': 'GE',
+    '>': 'GT',
+    '++': 'INCREMENT',
+    '--': 'DECREMENT',
+    '+': 'PLUS',
+    '-': 'MINUS',
+    '*': 'MUL',
+    '/': 'DIV',
+    '%': 'MOD',
+    '!': 'NOT',
+    '~': 'BITWISE_NOT',
+    '.': 'DOT',
+    '[': 'LEFT_BRACKET',
+    ']': 'RIGHT_BRACKET',
+    '{': 'LEFT_CURLY',
+    '}': 'RIGHT_CURLY',
+    '(': 'LEFT_PAREN',
+    ')': 'RIGHT_PAREN'
+};
 
-var Tokenizer = function () {
-    function Tokenizer() {
-        _classCallCheck(this, Tokenizer);
+// Regular Expressions --------------------------------------------------------
+// ----------------------------------------------------------------------------
+var opMatch = '^';
+for (var i in OPERATORS) {
 
-        this._text = '';
-        this._tokenIndex = 0;
-        this._tokens = null;
-        this._tokensPos = {};
+    if (opMatch !== '^') {
+        opMatch += '|^';
     }
 
-    _createClass(Tokenizer, [{
-        key: 'isArgumentSeparator',
-        value: function isArgumentSeparator(ch) {
-            return (/;/.test(ch)
-            );
-        }
-    }, {
-        key: 'isDigit',
-        value: function isDigit(ch) {
-            return (/\d/.test(ch)
-            );
-        }
-    }, {
-        key: 'isLetter',
-        value: function isLetter(ch) {
-            return (/[a-z]/i.test(ch)
-            );
-        }
-    }, {
-        key: 'isOperator',
-        value: function isOperator(ch) {
-            return (/\=|\+|-|\*|\/|\^/.test(ch)
-            );
-        }
-    }, {
-        key: 'isQuotes',
-        value: function isQuotes(ch) {
-            return ch == '"';
-        }
-    }, {
-        key: 'isBlank',
-        value: function isBlank(ch) {
-            return ch == ' ' || ch == '\t' || ch == '\n' || ch.charCodeAt(0) == 160;
-        }
-    }, {
-        key: 'validateNumber',
-        value: function validateNumber(value) {
-            return !isNaN(Number(value));
-        }
-    }, {
-        key: 'validateContextVar',
-        value: function validateContextVar(name) {
-            var context_vars = {
-                '$INDEX': true
-            };
+    opMatch += i.replace(/[?|^&(){}\[\]+\-*\/\.]/g, '\\$&');
+}
 
-            return context_vars[name];
-        }
-    }, {
-        key: 'nextChar',
-        value: function nextChar() {
-            return this._text[this._tokenIndex++];
-        }
-    }, {
-        key: 'createToken',
-        value: function createToken(position, token) {
-            token.index = this._tokens.length;
+var opRegExp = new RegExp(opMatch),
+    fpRegExp = /^\d+\.\d*(?:[eE][-+]?\d+)?|^\d+(?:\.\d*)?[eE][-+]?\d+|^\.\d+(?:[eE][-+]?\d+)?/,
+    reRegExp = /^\/((?:\\.|\[(?:\\.|[^\]])*\]|[^\/])+)\/([gimy]*)/,
+    intRegExp = /^0[xX][\da-fA-F]+|^0[0-7]*|^\d+/,
+    multiCommentRegExp = /^\/\*(.|[\r\n])*?\*\//m,
+    commentRegExp = /^\/\/.*/,
+    identRegExp = /^[$_\w]+/,
+    wsRegExp = /^[\ \t]+/,
+    strRegExp = /^'([^'\\]|\\.)*'|^"([^"\\]|\\.)*"/;
 
-            this._tokens.push(token);
-            this._tokensPos[position] = token;
-        }
-    }, {
-        key: 'readNumber',
-        value: function readNumber(context, ch, argumentIndex) {
-            var value = ch;
-            var position = this._tokenIndex - 1;
+// Token Class ----------------------------------------------------------------
+// ----------------------------------------------------------------------------
+function Token() {
 
-            while (ch = this.nextChar()) {
-                if (this.isDigit(ch) || ch == ".") {
-                    value += ch;
+    this.col = 1;
+    this.line = 1;
+    this.ws = {
+        indent: 0,
+        before: 0,
+        after: 0,
+        trailing: 0
+    };
+
+    this.type = null;
+    this.value = null;
+    this.plain = null;
+}
+
+Token.prototype.toString = function () {
+    return '[' + (this.type + '        ').substr(0, 13) + ' ' + '[' + this.ws.indent + ':' + this.ws.before + ']' + this.line + ':' + this.col + '[' + this.ws.after + ':' + this.ws.trailing + ']' + ': ' + this.value + ']';
+};
+
+// Main Tokenizer function ----------------------------------------------------
+// ----------------------------------------------------------------------------
+function tokenize(input, tabWidth) {
+    var cursor = 0,
+        line = 1,
+        col = 0,
+        spaceBefore = 0,
+        indentation = 0,
+
+    // tabExpand = new Array((tabWidth || 4)).join(' '),
+    token = new Token(),
+        lastToken = null,
+        lastIdentifier = null,
+        activeContext = null,
+        list = [],
+        context = [],
+        contextPosition = 0;
+
+    // Grab the inputs
+    while (cursor < input.length) {
+
+        // Save the last non-whitespace token
+        if (token.type !== 'WHITESPACE') {
+            lastToken = token;
+        }
+
+        // Get the rest
+        // We also grab the rest of the line here for regexps
+        var sub = input.substring(cursor),
+            subline = sub.substring(0, sub.indexOf('\n')),
+            m = null;
+
+        // Create next token
+        token = new Token();
+        token.line = line;
+        token.col = col;
+        token.ws.indent = indentation;
+        token.ws.before = lastToken.type === 'NEWLINE' ? 0 : spaceBefore;
+
+        // Reset whitespace
+        spaceBefore = 0;
+
+        // Newlines
+        if (sub[0] === '\n') {
+
+            lastToken.ws.trailing = token.ws.before;
+            token.ws.before = 0;
+
+            token.type = 'NEWLINE';
+            token.value = '\\n';
+            token.plain = sub[0];
+            col = 0;
+            line++;
+
+            // Multi line comments
+            // don't ask how this regexp works just pray that it will never fail
+        } else if (m = sub.match(multiCommentRegExp)) {
+            token.type = 'MULTI_COMMENT';
+            token.plain = m[0];
+            token.value = m[0].slice(2, -2);
+
+            var lines = token.plain.split('\n');
+            line += lines.length - 1;
+            col = lines[lines.length - 1].length - m[0].length + 1;
+
+            // Comment
+        } else if (m = subline.match(commentRegExp)) {
+            token.type = 'COMMENT';
+            token.plain = m[0];
+            token.value = m[0].substr(2);
+
+            // Float
+        } else if (m = sub.match(fpRegExp)) {
+            token.type = 'FLOAT';
+            token.plain = m[0];
+            token.value = parseFloat(m[0]);
+
+            // Integer
+        } else if (m = sub.match(intRegExp)) {
+            token.type = 'INTEGER';
+            token.plain = m[0];
+            token.value = parseInt(m[0]);
+
+            // String
+        } else if (m = sub.match(strRegExp)) {
+            token.type = 'STRING';
+            token.plain = m[0];
+            token.value = eval(m[0]); // simpelst way to get the actual js string value, don't beat me, taken from narcissus!
+
+            // Uncomplete String
+        } else if (sub.startsWith('"')) {
+            token.type = 'UNCOMPLETE_STRING';
+            token.plain = sub;
+            token.value = sub.substring(1);
+            cursor += sub.length;
+
+            // Identifier
+        } else if (m = sub.match(identRegExp)) {
+            token.value = m[0];
+            token.type = KEYWORDS.indexOf(token.value) !== -1 ? 'KEYWORD' : 'IDENTIFIER';
+            if (token.type == 'IDENTIFIER') {
+                lastIdentifier = token;
+            }
+
+            // Regexp, matches online on the same line and only if we didn't encounter a identifier right before it
+        } else if (lastToken.type !== 'IDENTIFIER' && (m = subline.match(reRegExp))) {
+            token.type = 'REGEXP';
+            token.plain = m[0];
+            token.value = m[1];
+            token.flags = m[2];
+
+            // Operator
+        } else if (m = sub.match(opRegExp)) {
+
+            // Check for assignments
+            var op = OPERATORS[m[0]];
+            if (op.substring(0, 6) === 'ASSIGN') {
+
+                token.type = 'ASSIGN';
+                if (op === 'ASSIGN') {
+                    token.operator = null;
                 } else {
-                    break;
+                    token.operator = op.substring(7);
                 }
+            } else {
+                token.type = op;
             }
 
-            this._tokenIndex--;
+            token.value = m[0];
 
-            this.createToken(position, {
-                value: value,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'number',
-                validate: this.validateNumber(value)
-            });
-        }
-    }, {
-        key: 'readString',
-        value: function readString(context, ch, argumentIndex) {
-            var value = ch;
-            var start = ch;
-            var position = this._tokenIndex - 1;
+            // Whitespace handling
+        } else if (m = sub.match(wsRegExp)) {
 
-            while (ch = this.nextChar()) {
-                value += ch;
+            token.type = 'WHITESPACE';
 
-                if (start == ch) {
-                    break;
-                }
+            // Provide meta information about whitespacing
+            spaceBefore = m[0].replace(/\t/g, '    ').length;
+            if (col === 1) {
+                indentation = spaceBefore;
+            } else {
+                lastToken.ws.after = spaceBefore;
             }
 
-            this.createToken(position, {
-                value: value,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'string'
-            });
+            // If we ever hit this... we suck
+        } else {
+            throw new Error('Unexpected: ' + sub[0] + ' on :');
         }
-    }, {
-        key: 'readFunction',
-        value: function readFunction(context, ch, argumentIndex) {
-            var value = ch;
-            var position = this._tokenIndex - 1;
 
-            // nome da função
-            while (ch = this.nextChar()) {
-                if (this.isLetter(ch) || this.isDigit(ch)) {
-                    value += ch;
-                } else {
-                    break;
-                }
-            }
+        // Add non-whitespace tokens to stream
+        if (token.type !== 'WHITESPACE') {
+            if (lastIdentifier) {
+                if (token.value == '(') {
+                    activeContext = lastIdentifier;
+                    lastIdentifier.type = 'FUNCTION';
+                    context.push(lastIdentifier);
 
-            this._tokenIndex--;
-
-            this.createToken(position, {
-                value: value,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'function'
-            });
-
-            while (ch = this.nextChar()) {
-                if (ch == '(') {
-                    this.charAnalize(value, ch, 0);
-                } else if (ch == ')') {
-                    this.charAnalize(context, ch, argumentIndex);
-                    break;
-                } else {
-                    this.charAnalize(value, ch, 0);
-                }
-            }
-        }
-    }, {
-        key: 'readField',
-        value: function readField(context, ch, argumentIndex) {
-            var value = ch;
-            var position = this._tokenIndex - 1;
-
-            while (ch = this.nextChar()) {
-                value += ch;
-
-                if (ch == '}') {
-                    break;
-                }
-            }
-
-            this.createToken(position, {
-                value: value,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'field'
-            });
-        }
-    }, {
-        key: 'readContextVar',
-        value: function readContextVar(context, ch, argumentIndex) {
-            var value = ch;
-            var position = this._tokenIndex - 1;
-
-            while (ch = this.nextChar()) {
-                if (this.isLetter(ch) || this.isDigit(ch)) {
-                    value += ch;
-                } else {
-                    break;
-                }
-            }
-
-            this._tokenIndex--;
-
-            this.createToken(position, {
-                value: value,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'context_var'
-            });
-        }
-    }, {
-        key: 'readOperator',
-        value: function readOperator(context, ch, argumentIndex) {
-            var value = ch;
-            var position = this._tokenIndex - 1;
-            var n = this._text[this._tokenIndex];
-
-            if (n == '=') {
-                ch += n;
-            }
-
-            this.createToken(position, {
-                value: value,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'operator'
-            });
-        }
-    }, {
-        key: 'readArgumentSeparator',
-        value: function readArgumentSeparator(context, ch, argumentIndex) {
-            var position = this._tokenIndex - 1;
-
-            argumentIndex++;
-
-            this.createToken(position, {
-                value: ch,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'argument-separator'
-            });
-
-            while (ch = this.nextChar()) {
-
-                if (ch == ')') {
-                    this._tokenIndex--;
-                    return;
-                }
-
-                this.charAnalize(context, ch, argumentIndex);
-            }
-        }
-    }, {
-        key: 'readArgumentStart',
-        value: function readArgumentStart(context, ch, argumentIndex) {
-            var position = this._tokenIndex - 1;
-
-            this.createToken(position, {
-                value: ch,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'argument-start'
-            });
-
-            return 'argument-start';
-        }
-    }, {
-        key: 'readArgumentEnd',
-        value: function readArgumentEnd(context, ch, argumentIndex) {
-            var position = this._tokenIndex - 1;
-
-            this.createToken(position, {
-                value: ch,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'argument-end'
-            });
-
-            return 'argument-end';
-        }
-    }, {
-        key: 'readBlank',
-        value: function readBlank(context, ch, argumentIndex) {
-            var value = ch;
-            var position = this._tokenIndex - 1;
-
-            while (ch = this.nextChar()) {
-                if (this.isBlank(ch)) {
-                    value += ch;
-                } else {
-                    break;
-                }
-            }
-
-            this._tokenIndex--;
-
-            this.createToken(position, {
-                value: value,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'blank'
-            });
-        }
-    }, {
-        key: 'readOther',
-        value: function readOther(context, ch, argumentIndex) {
-            var value = ch;
-            var position = this._tokenIndex - 1;
-
-            this.createToken(position, {
-                value: value,
-                context: context,
-                argumentIndex: argumentIndex,
-                type: 'other'
-            });
-        }
-    }, {
-        key: 'charAnalize',
-        value: function charAnalize(context, ch, argumentIndex) {
-            // number      
-            if (this.isDigit(ch)) {
-                this.readNumber(context, ch, argumentIndex);
-            }
-
-            // string
-            else if (this.isQuotes(ch)) {
-                    this.readString(context, ch, argumentIndex);
-                }
-
-                // função
-                else if (this.isLetter(ch)) {
-                        this.readFunction(context, ch, argumentIndex);
+                    contextPosition = 0;
+                    activeContext.argumentCount = 1;
+                } else if (token.value == ')') {
+                    context.pop();
+                    activeContext = context[context.length - 1];
+                } else if (token.value == ',') {
+                    if (activeContext) {
+                        contextPosition++;
+                        activeContext.argumentCount = contextPosition + 1;
                     }
-
-                    // campo
-                    else if (ch == '{') {
-                            this.readField(context, ch, argumentIndex);
-                        }
-
-                        // variável de contexto
-                        else if (ch == '$') {
-                                this.readContextVar(context, ch, argumentIndex);
-                            }
-
-                            // operador
-                            else if (this.isOperator(ch)) {
-                                    this.readOperator(context, ch, argumentIndex);
-                                }
-
-                                // separado de argumentos de função
-                                else if (this.isArgumentSeparator(ch)) {
-                                        this.readArgumentSeparator(context, ch, argumentIndex);
-                                    }
-
-                                    // início de argumentos de função
-                                    else if (ch == '(') {
-                                            return this.readArgumentStart(context, ch, argumentIndex);
-                                        }
-
-                                        // fim de argumentos de função
-                                        else if (ch == ')') {
-                                                return this.readArgumentEnd(context, ch, argumentIndex);
-                                            } else if (this.isBlank(ch)) {
-                                                this.readBlank(context, ch, argumentIndex);
-                                            } else {
-                                                this.readOther(context, ch, argumentIndex);
-                                            }
-        }
-    }, {
-        key: 'execute',
-        value: function execute(text) {
-            var ch = void 0;
-
-            this._text = text;
-            this._tokens = [];
-            this._tokenIndex = 0;
-            this._tokensPos = {};
-
-            while (ch = this.nextChar()) {
-                this.charAnalize(null, ch, 0);
+                }
             }
 
-            return this._tokens;
-        }
-    }, {
-        key: 'getPositions',
-        value: function getPositions() {
-            return this._tokensPos;
-        }
-    }, {
-        key: 'getTokens',
-        value: function getTokens() {
-            return this._tokens;
-        }
-    }]);
+            token.context = activeContext ? activeContext.value : null;
+            token.contextPos = token.context ? contextPosition : null;
 
-    return Tokenizer;
-}();
+            list.push(token);
+        }
 
-exports.default = Tokenizer;
+        // Advance cursor by match length
+        var len = 1;
+        if (m) {
+            len = m[0].length + m.index;
+        }
+
+        cursor += len;
+        col += len;
+    }
+
+    // Return some API for ya
+    var tokenPos = -1;
+    return {
+        peek: function peek() {
+            return list[tokenPos + 1];
+        },
+
+        next: function next() {
+            return list[++tokenPos];
+        },
+
+        get: function get() {
+            return list[tokenPos];
+        },
+
+        all: function all() {
+            return list;
+        },
+
+        at: function at(pos) {
+            return list[pos];
+        },
+
+        reset: function reset() {
+            tokenPos = 0;
+        }
+
+    };
+}
+
+exports.default = tokenize;
 
 /***/ }),
 
@@ -818,8 +767,8 @@ editor.setFunctions({
 });
 
 editor.setFields({
-    '{a}': 1,
-    '{bb}': 1
+    'a': 1,
+    'bb': 1
 });
 
 /***/ })

@@ -32,18 +32,16 @@
     
 }
 
-.string{
-    color: #FFC107
-}
-.function, .field, .context_var{
-    color: #c0c0c0
-}
-.function.validate{
-    color:blue
-}
-.field-start, .field-end, .field.validate{
-    color:#009688
-}
+.STRING, .UNCOMPLETE_STRING{color: #FFC107}
+
+.FUNCTION{color:blue}
+.FUNCTION.UNVALIDATE{color: #c0c0c0}
+
+.LEFT_CURLY, .RIGHT_CURLY{color: #009688}
+
+.IDENTIFIER{color:#009688}
+.IDENTIFIER.UNVALIDATE{color:#c0c0c0}
+
 .context_var.validate{
     font-weight: bold;
     color: #000;

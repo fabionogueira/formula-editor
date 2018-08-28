@@ -75,6 +75,6 @@ editor.setFunctions({
 })
 
 editor.setFields({
-    '{a}':1,
-    '{bb}':1
+    'a':1,
+    'bb':1
 })

@@ -1,7 +1,6 @@
 // @ts-check
 
-
-import Tokenizer from './tokenizer'
+import tokenizer from './tokenizer'
 
 export default class Editor{
     constructor(element, config = {}){
@@ -15,8 +14,7 @@ export default class Editor{
 
         this._pre = element.querySelector('pre')
         this._textarea = element.querySelector('textarea')
-        this._tokenizer = new Tokenizer()
-
+        
         this._functions = {}
         this._fields = {}
         
@@ -62,10 +60,10 @@ export default class Editor{
             }
         }
         textarea.onkeyup = () => {
-            this._generateTip()
+            // this._generateTip()
         }
         textarea.onmouseup = () => {
-            this._generateTip()
+            // this._generateTip()
         }   
         textarea.oninput = () => {
             this._render()
@@ -81,106 +79,110 @@ export default class Editor{
         }
     }
 
-    _generateTip(){
-        let t, i, o, n, s, b, e
-        let tip = ''
+    // _generateTip(){
+    //     let t, i, o, n, s, b, e
+    //     let tip = ''
 
-        t = this._getParamDefinition(this._textarea.selectionStart -1)
+    //     t = this._getParamDefinition(this._textarea.selectionStart -1)
         
-        if (t){
-            if (t.type=='function' && !t.validate){
-                for (i in this._functions){
-                    if (i.startsWith(t.value)){
-                        tip += `<p style="${i==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
-                    }
-                }
-            } else if (t.type=='field' && !t.validate){
-                for (i in this._fields){
-                    n = i.substring(0, i.length - 1)
-                    if (i.startsWith(t.value)){
-                        tip += `<p style="${n==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
-                    }
-                }
-            } else if (t.context){
-                o = this._functions[t.context]
-                if (o){
-                    tip = t.context + '('
-                    s = ''
+    //     if (t){
+    //         if (t.type=='function' && !t.validate){
+    //             for (i in this._functions){
+    //                 if (i.startsWith(t.value)){
+    //                     tip += `<p style="${i==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
+    //                 }
+    //             }
+    //         } else if (t.type=='field' && !t.validate){
+    //             for (i in this._fields){
+    //                 n = i.substring(0, i.length - 1)
+    //                 if (i.startsWith(t.value)){
+    //                     tip += `<p style="${n==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
+    //                 }
+    //             }
+    //         } else if (t.context){
+    //             o = this._functions[t.context]
+    //             if (o){
+    //                 tip = t.context + '('
+    //                 s = ''
                     
-                    if (o.arguments){
-                        e = false
-                        for (i=0; i<o.arguments.length; i++){
-                            n = o.arguments[i].name
-                            b = (i == t.argumentIndex)
+    //                 if (o.arguments){
+    //                     e = false
+    //                     for (i=0; i<o.arguments.length; i++){
+    //                         n = o.arguments[i].name
+    //                         b = (i == t.argumentIndex)
                             
-                            if (b){
-                                e = true
-                            }
+    //                         if (b){
+    //                             e = true
+    //                         }
                             
-                            tip += s + ( b || (i==o.arguments.length-1 && !e && o.arguments[i].several) ? `<b style="background:#f3dd9b">${n}</b>` : n)
-                            s = '; '
-                        }
+    //                         tip += s + ( b || (i==o.arguments.length-1 && !e && o.arguments[i].several) ? `<b style="background:#f3dd9b">${n}</b>` : n)
+    //                         s = '; '
+    //                     }
 
-                        tip += ')'
-                    }
-                }
+    //                     tip += ')'
+    //                 }
+    //             }
                 
-            }
-        }
+    //         }
+    //     }
 
-        if (this._onTip){
-            this._onTip(tip)
-        }
-    }
+    //     if (this._onTip){
+    //         this._onTip(tip)
+    //     }
+    // }
 
-    _getParamDefinition(position){
-        let token
-        let positions = this._tokenizer.getPositions()
+    // _getParamDefinition(position){
+    //     let token
+    //     let positions = this._tokenizer.getPositions()
     
-        while (position >= 0){
-            token = positions[position]
+    //     while (position >= 0){
+    //         token = positions[position]
             
-            if (token && token.type != 'blank'){
-                this._validateToken(token)
-                return token
-            }
+    //         if (token && token.type != 'blank'){
+    //             this._validateToken(token)
+    //             return token
+    //         }
     
-            position--
-        }
-    }
+    //         position--
+    //     }
+    // }
 
-    _validateToken(token){
-        let tokens = this._tokenizer.getTokens()
-        let j = token.index + 1
-        let i, tk
+    // _validateToken(token){
+    //     let tokens = this._tokenizer.getTokens()
+    //     let j = token.index + 1
+    //     let i, tk
 
-        token.validate = false
+    //     token.validate = false
 
-        if (token.type=='function'){
-            for (i=j; i<tokens.length; i++){
-                tk = tokens[i]
+    //     if (token.type=='function'){
+    //         for (i=j; i<tokens.length; i++){
+    //             tk = tokens[i]
                 
-                if (tk.value == '('){
-                    return token.validate = this._functions[token.value] ? true : false
-                } else if (tk.type != 'blank'){
-                    return token.validate = false
-                }
-            }
-        } else if (token.type=='field'){
-            token.validate = this._fields[token.value] ? true : false
-        }
-    }
+    //             if (tk.value == '('){
+    //                 return token.validate = this._functions[token.value] ? true : false
+    //             } else if (tk.type != 'blank'){
+    //                 return token.validate = false
+    //             }
+    //         }
+    //     } else if (token.type=='field'){
+    //         token.validate = this._fields[token.value] ? true : false
+    //     }
+    // }
 
     _render(){
-        let tokens = this._tokenizer.execute(this._textarea.value)
+        let tokens = tokenizer(this._textarea.value).all()
         let html = ''
-    
+        
         tokens.forEach(token => {
-            if (token.type=='function'){
+            if (token.type == 'FUNCTION'){
                 token.validate = this._functions[token.value] ? true : false
-            } else if (token.type=='field'){
+            } else if (token.type == 'IDENTIFIER'){
                 token.validate = this._fields[token.value] ? true : false
-            }
+            } else if (token.type == 'STRING'){
+                token.value = `"${token.value}"`
+            } else if (token.type == 'UNCOMPLETE_STRING'){
+                token.value = `"${token.value}`
+            } 
 
             html += this._formatToken(token)
         })
@@ -191,9 +193,10 @@ export default class Editor{
 
     _formatToken(token){
         let r = token.value
-        let cls = token.type + (token.validate ? ' validate' : ' unvalidate')
-    
-        r = `<span class="${cls}">${r}</span>`
+        let cls = token.type + (token.validate===false ? ' UNVALIDATE' : '')
+        let space = '                                    '
+
+        r = `<span class="${cls}">${space.substring(0, token.ws.before) + r}</span>`
     
         return r
     }
