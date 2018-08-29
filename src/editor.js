@@ -1,6 +1,6 @@
 // @ts-check
 
-import tokenizer from './tokenizer'
+import tokenizer from './tokenizer2'
 
 export default class Editor{
     constructor(element, config = {}){
@@ -193,6 +193,8 @@ export default class Editor{
     _render(){
         let tokens = this._tokens = tokenizer(this._textarea.value)
         let html = ''
+        
+        console.log(tokens)
         
         tokens.forEach(token => {
             if (token.type == 'FUNCTION'){

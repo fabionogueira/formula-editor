@@ -102,7 +102,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); // @ts-check
 
-var _tokenizer = __webpack_require__(/*! ./tokenizer */ "./src/tokenizer.js");
+var _tokenizer = __webpack_require__(/*! ./tokenizer2 */ "./src/tokenizer2.js");
 
 var _tokenizer2 = _interopRequireDefault(_tokenizer);
 
@@ -314,6 +314,8 @@ var Editor = function () {
             var tokens = this._tokens = (0, _tokenizer2.default)(this._textarea.value);
             var html = '';
 
+            console.log(tokens);
+
             tokens.forEach(function (token) {
                 if (token.type == 'FUNCTION') {
                     token.validate = _this2._functions[token.value] ? true : false;
@@ -379,10 +381,10 @@ exports.default = Editor;
 
 /***/ }),
 
-/***/ "./src/tokenizer.js":
-/*!**************************!*\
-  !*** ./src/tokenizer.js ***!
-  \**************************/
+/***/ "./src/tokenizer2.js":
+/*!***************************!*\
+  !*** ./src/tokenizer2.js ***!
+  \***************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -468,12 +470,6 @@ for (var i in OPERATORS) {
 }
 
 var opRegExp = new RegExp(opMatch),
-    fpRegExp = /^\d+\.\d*(?:[eE][-+]?\d+)?|^\d+(?:\.\d*)?[eE][-+]?\d+|^\.\d+(?:[eE][-+]?\d+)?/,
-    reRegExp = /^\/((?:\\.|\[(?:\\.|[^\]])*\]|[^\/])+)\/([gimy]*)/,
-    intRegExp = /^0[xX][\da-fA-F]+|^0[0-7]*|^\d+/,
-    multiCommentRegExp = /^\/\*(.|[\r\n])*?\*\//m,
-    commentRegExp = /^\/\/.*/,
-    identRegExp = /^[$_\w]+/,
     wsRegExp = /^[\ \t]+/,
     strRegExp = /^'([^'\\]|\\.)*'|^"([^"\\]|\\.)*"/;
 
@@ -482,13 +478,6 @@ var opRegExp = new RegExp(opMatch),
 function Token() {
     this.col = 1;
     this.line = 1;
-    this.ws = {
-        indent: 0,
-        before: 0,
-        after: 0,
-        trailing: 0
-    };
-
     this.context = null;
     this.contextPos = null;
     this.argumentCount = null;
@@ -501,14 +490,10 @@ function Token() {
     this.validate = null;
 }
 
-Token.prototype.toString = function () {
-    return '[' + (this.type + '        ').substr(0, 13) + ' ' + '[' + this.ws.indent + ':' + this.ws.before + ']' + this.line + ':' + this.col + '[' + this.ws.after + ':' + this.ws.trailing + ']' + ': ' + this.value + ']';
-};
-
 // Main Tokenizer function ----------------------------------------------------
 // ----------------------------------------------------------------------------
 function tokenize(input, tabWidth) {
-    var cursor = 0,
+    var cursor = -1,
         line = 1,
         col = 0,
         spaceBefore = 0,
@@ -521,175 +506,191 @@ function tokenize(input, tabWidth) {
         activeContext = null,
         list = [],
         context = [],
-        contextPosition = 0;
+        contextPosition = 0,
+        ch = void 0,
+        length = input.length;
 
-    // Grab the inputs
-    while (cursor < input.length) {
+    function nextChar() {
+        col++;
+        return input[++cursor];
+    }
+
+    function isDigit(ch) {
+        return (/\d/.test(ch)
+        );
+    }
+
+    function isLetter(ch) {
+        return (/[a-z]/i.test(ch)
+        );
+    }
+
+    function isOperator(ch) {
+        return (/\=|\+|-|\*|\/|\^|\(|\)/.test(ch)
+        );
+    }
+
+    function isBlank(ch) {
+        return ch == ' ' || ch == '\t' || ch.charCodeAt(0) == 160;
+    }
+
+    function readNumber(ch) {
+        var value = ch;
+
+        while (ch = nextChar()) {
+            if (isDigit(ch) || ch == ".") {
+                value += ch;
+            } else {
+                cursor--;
+                col--;
+                break;
+            }
+        }
+
+        return value;
+    }
+
+    function readString(ch) {
+        var value = ch;
+        var start = ch;
+
+        while (ch = nextChar()) {
+            value += ch;
+
+            if (start == ch) {
+                break;
+            }
+        }
+
+        return value;
+    }
+
+    function readIdentifier(ch) {
+        var value = ch;
+
+        while (ch = nextChar()) {
+            if (isLetter(ch) || isDigit(ch)) {
+                value += ch;
+            } else {
+                cursor--;
+                col--;
+                break;
+            }
+        }
+
+        return value;
+    }
+
+    function readOperator(ch) {
+        return ch;
+    }
+
+    function readWhiteSpace() {
+        var value = ' ';
+
+        while (ch = nextChar()) {
+            if (isBlank(ch)) {
+                value += ' ';
+            } else {
+                cursor--;
+                col--;
+                break;
+            }
+        }
+
+        return value;
+    }
+
+    while (ch = nextChar()) {
 
         // Save the last non-whitespace token
         if (token.type !== 'WHITESPACE') {
             lastToken = token;
         }
 
-        // Get the rest
-        // We also grab the rest of the line here for regexps
-        var sub = input.substring(cursor),
-            subline = sub.substring(0, sub.indexOf('\n')),
-            m = null;
-
         // Create next token
         token = new Token();
         token.line = line;
         token.col = col;
         token.cursor = cursor;
-        token.ws.indent = indentation;
-        token.ws.before = lastToken.type === 'NEWLINE' ? 0 : spaceBefore;
-
-        // Reset whitespace
-        spaceBefore = 0;
 
         // Newlines
-        if (sub[0] === '\n') {
-
-            lastToken.ws.trailing = token.ws.before;
-            token.ws.before = 0;
-
+        if (ch === '\n') {
             token.type = 'NEWLINE';
             token.value = '\\n';
-            token.plain = sub[0];
             col = 0;
             line++;
 
             // Multi line comments
             // don't ask how this regexp works just pray that it will never fail
-        } else if (m = sub.match(multiCommentRegExp)) {
+        } else if (ch == '/' && input[cursor + 1] == '*') {
             token.type = 'MULTI_COMMENT';
-            token.plain = m[0];
-            token.value = m[0].slice(2, -2);
 
             var lines = token.plain.split('\n');
             line += lines.length - 1;
-            col = lines[lines.length - 1].length - m[0].length + 1;
+            // col = lines[lines.length - 1].length - m[0].length + 1
 
             // Comment
-        } else if (m = subline.match(commentRegExp)) {
+        } else if (ch == '/' && input[cursor + 1] == '/') {
             token.type = 'COMMENT';
-            token.plain = m[0];
-            token.value = m[0].substr(2);
+            token.value = ''; // m[0].substr(2)
 
             // Float
-        } else if (m = sub.match(fpRegExp)) {
-            token.type = 'FLOAT';
-            token.plain = m[0];
-            token.value = parseFloat(m[0]);
-
-            // Integer
-        } else if (m = sub.match(intRegExp)) {
-            token.type = 'INTEGER';
-            token.plain = m[0];
-            token.value = parseInt(m[0]);
+        } else if (isDigit(ch)) {
+            token.type = 'NUMBER';
+            token.value = readNumber(ch);
 
             // String
-        } else if (m = sub.match(strRegExp)) {
+        } else if (ch == '"') {
             token.type = 'STRING';
-            token.plain = m[0];
-            token.value = eval(m[0]); // simpelst way to get the actual js string value, don't beat me, taken from narcissus!
-
-            // Uncomplete String
-        } else if (sub.startsWith('"')) {
-            token.type = 'UNCOMPLETE_STRING';
-            token.plain = sub;
-            token.value = sub.substring(1);
-            cursor += sub.length;
+            token.value = readString(ch);
 
             // Identifier
-        } else if (m = sub.match(identRegExp)) {
-            token.value = m[0];
+        } else if (isLetter(ch)) {
+            token.value = readIdentifier(ch);
             token.type = KEYWORDS.indexOf(token.value) !== -1 ? 'KEYWORD' : 'IDENTIFIER';
             if (token.type == 'IDENTIFIER') {
                 lastIdentifier = token;
             }
 
-            // Regexp, matches online on the same line and only if we didn't encounter a identifier right before it
-        } else if (lastToken.type !== 'IDENTIFIER' && (m = subline.match(reRegExp))) {
-            token.type = 'REGEXP';
-            token.plain = m[0];
-            token.value = m[1];
-            token.flags = m[2];
-
             // Operator
-        } else if (m = sub.match(opRegExp)) {
-
-            // Check for assignments
-            var op = OPERATORS[m[0]];
-            if (op.substring(0, 6) === 'ASSIGN') {
-
-                token.type = 'ASSIGN';
-                if (op === 'ASSIGN') {
-                    token.operator = null;
-                } else {
-                    token.operator = op.substring(7);
-                }
-            } else {
-                token.type = op;
-            }
-
-            token.value = m[0];
+        } else if (isOperator(ch)) {
+            token.type = 'OPERATOR';
+            token.value = readOperator(ch);
 
             // Whitespace handling
-        } else if (m = sub.match(wsRegExp)) {
-
+        } else if (isBlank(ch)) {
             token.type = 'WHITESPACE';
-            token.value = m[0];
-
-            // Provide meta information about whitespacing
-            spaceBefore = m[0].replace(/\t/g, '    ').length;
-            if (col === 1) {
-                indentation = spaceBefore;
-            } else {
-                lastToken.ws.after = spaceBefore;
-            }
+            token.value = readWhiteSpace();
 
             // If we ever hit this... we suck
         } else {
-            throw new Error('Unexpected: ' + sub[0] + ' on :');
+            throw new Error('Unexpected: ' + ch + ' on :');
         }
 
-        // Add non-whitespace tokens to stream
-        if (token.type !== 'WHITESPACExxx') {
-            if (lastIdentifier) {
-                if (token.value == '(') {
-                    activeContext = lastIdentifier;
-                    lastIdentifier.type = 'FUNCTION';
-                    context.push(lastIdentifier);
+        if (lastIdentifier) {
+            if (token.value == '(') {
+                activeContext = lastIdentifier;
+                lastIdentifier.type = 'FUNCTION';
+                context.push(lastIdentifier);
 
-                    contextPosition = 0;
-                    activeContext.argumentCount = 1;
-                } else if (token.value == ')') {
-                    context.pop();
-                    activeContext = context[context.length - 1];
-                } else if (token.value == ',') {
-                    if (activeContext) {
-                        contextPosition++;
-                        activeContext.argumentCount = contextPosition + 1;
-                    }
+                contextPosition = 0;
+                activeContext.argumentCount = 1;
+            } else if (token.value == ')') {
+                context.pop();
+                activeContext = context[context.length - 1];
+            } else if (token.value == ',') {
+                if (activeContext) {
+                    contextPosition++;
+                    activeContext.argumentCount = contextPosition + 1;
                 }
             }
-
-            token.context = activeContext ? activeContext.value : null;
-            token.contextPos = token.context ? contextPosition : null;
-
-            list.push(token);
         }
 
-        // Advance cursor by match length
-        var len = 1;
-        if (m) {
-            len = m[0].length + m.index;
-        }
+        token.context = activeContext ? activeContext.value : null;
+        token.contextPos = token.context ? contextPosition : null;
 
-        cursor += len;
-        col += len;
+        list.push(token);
     }
 
     return list;
