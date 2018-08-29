@@ -1,5 +1,3 @@
-// @ts-check
-
 // https://gist.github.com/BonsaiDen/1810887
 
 /**
@@ -88,234 +86,238 @@ for (let i in OPERATORS) {
 }
 
 let opRegExp = new RegExp(opMatch),
-    fpRegExp = /^\d+\.\d*(?:[eE][-+]?\d+)?|^\d+(?:\.\d*)?[eE][-+]?\d+|^\.\d+(?:[eE][-+]?\d+)?/,
-    reRegExp = /^\/((?:\\.|\[(?:\\.|[^\]])*\]|[^\/])+)\/([gimy]*)/,
-    intRegExp = /^0[xX][\da-fA-F]+|^0[0-7]*|^\d+/,
-    multiCommentRegExp = /^\/\*(.|[\r\n])*?\*\//m,
-    commentRegExp = /^\/\/.*/,
-    identRegExp = /^[$_\w]+/,
     wsRegExp = /^[\ \t]+/,
     strRegExp = /^'([^'\\]|\\.)*'|^"([^"\\]|\\.)*"/
 
 // Token Class ----------------------------------------------------------------
 // ----------------------------------------------------------------------------
-function Token() {
-    this.col = 1
-    this.line = 1
-    this.ws = {
-        indent: 0,
-        before: 0,
-        after: 0,
-        trailing: 0
+function newToken(line, col, cursor) {
+    return {
+        col,
+        line,
+        cursor,
+        type: null,
+        value: null,
+
+        context: null,
+        contextPos: null
     }
-    
-    this.context = null
-    this.contextPos = null
-    this.argumentCount = null
-    this.cursor = null
-    this.flags = null
-    this.operator = null
-    this.type = null
-    this.value = null
-    this.plain = null
-    this.validate = null
 }
 
-Token.prototype.toString = function() {
-    return '[' + (this.type + '        ').substr(0, 13) + ' ' +
-            '[' + this.ws.indent + ':' + this.ws.before + ']' + this.line +
-            ':' + this.col + '[' + this.ws.after + ':' + this.ws.trailing +
-            ']' + ': ' + this.value + ']'
-}
-
-// Main Tokenizer function ----------------------------------------------------
-// ----------------------------------------------------------------------------
-function tokenize(input, tabWidth) {
-    let cursor = 0,
+function tokenize(input) {
+    let ch, token, lastIdentifier, activeContext,
+        cursor = -1,
         line = 1,
         col = 0,
-        spaceBefore = 0,
-        indentation = 0,
-        // tabExpand = new Array((tabWidth || 4)).join(' '),
-        token = new Token(),
-        lastToken = null,
-        lastIdentifier = null,
-        activeContext = null,
         list = [],
         context = [],
-        contextPosition = 0
+        contextPos = 0
 
-    // Grab the inputs
-    while (cursor < input.length) {
+    function nextChar(){
+        col++
+        return input[++cursor]
+    }
 
-        // Save the last non-whitespace token
-        if (token.type !== 'WHITESPACE') {
-            lastToken = token
+    function nextContext(){
+        if (activeContext){
+            activeContext.contextPosCache = contextPos
         }
 
-        // Get the rest
-        // We also grab the rest of the line here for regexps
-        let sub = input.substring(cursor),
-            subline = sub.substring(0, sub.indexOf('\n')),
-            m = null
+        activeContext = lastIdentifier
+        activeContext.type = 'FUNCTION'
 
-        // Create next token
-        token = new Token()
-        token.line = line
-        token.col = col
-        token.cursor = cursor
-        token.ws.indent = indentation
-        token.ws.before = lastToken.type === 'NEWLINE' ? 0 : spaceBefore
+        context.push(activeContext)
+        contextPos = 0
+    }
 
-        // Reset whitespace
-        spaceBefore = 0
+    function previousContext(){
+        context.pop()
+        activeContext = context[context.length - 1]
+        contextPos = activeContext ? activeContext.contextPosCache : null
+    }
 
+    const is = {
+        digit(ch) {
+            return /\d/.test(ch);
+        },
+        letter(ch) {
+            return /[a-z]/i.test(ch);
+        },
+        operator(ch){
+            return /\=|\+|-|\*|\/|\^|\(|\)|\{|\}|\>|\<|;|,/.test(ch);
+        },
+        blank(ch){
+            return (ch==' ' || ch=='\t' || ch.charCodeAt(0)==160)
+        }
+    }
+
+    const read = {
+        number(ch){
+            let value = ch
+            
+            while (ch = nextChar()){
+                if (is.digit(ch) || ch==".") {
+                    value += ch
+                } else {
+                    cursor--
+                    col--
+                    break
+                }
+            }
+        
+            return value
+        },
+
+        field(ch){
+            let value = ch
+        
+            while (ch = nextChar()){
+                value += ch
+                
+                if (ch == '}') {
+                    break
+                }
+            }
+            
+            return value
+        },
+
+        string(ch){
+            let value = ch
+            let start = ch
+        
+            while (ch = nextChar()){
+                value += ch
+                
+                if (start==ch) {
+                    break
+                }
+            }
+            
+            return value
+        },
+
+        identifier(ch){
+            let value = ch
+
+            while (ch = nextChar()){
+                if(is.letter(ch) || is.digit(ch)) {
+                    value += ch
+                } else {
+                    cursor--
+                    col--
+                    break
+                }
+            }
+
+            return value
+        },
+        
+        operator(ch){
+            return ch
+        },
+        
+        whiteSpace(){
+            let value = ' '
+
+            while (ch = nextChar()){
+                if(is.blank(ch)) {
+                    value += ' '
+                } else {
+                    cursor--
+                    col--
+                    break
+                }
+            }
+
+            return value
+        }
+    }
+
+    while (ch = nextChar()) {
+        token = newToken(line, col, cursor)
+        
         // Newlines
-        if (sub[0] === '\n') {
-
-            lastToken.ws.trailing = token.ws.before
-            token.ws.before = 0
-
+        if (ch === '\n') {
             token.type = 'NEWLINE'
-            token.value = '\\n'
-            token.plain = sub[0]
+            token.value = ch
             col = 0
             line++
 
         // Multi line comments
         // don't ask how this regexp works just pray that it will never fail
-        } else if ((m = sub.match(multiCommentRegExp))) {
+        } else if (ch == '/' && input[cursor+1] == '*') {
             token.type = 'MULTI_COMMENT'
-            token.plain = m[0]
-            token.value = m[0].slice(2, -2)
-
+            
             let lines = token.plain.split('\n')
             line += lines.length - 1
-            col = lines[lines.length - 1].length - m[0].length + 1
+            // col = lines[lines.length - 1].length - m[0].length + 1
 
         // Comment
-        } else if ((m = subline.match(commentRegExp))) {
+        } else if (ch == '/' && input[cursor+1] == '/') {
             token.type = 'COMMENT'
-            token.plain = m[0]
-            token.value = m[0].substr(2)
+            token.value = '' // m[0].substr(2)
 
         // Float
-        } else if ((m = sub.match(fpRegExp))) {
-            token.type = 'FLOAT'
-            token.plain = m[0]
-            token.value = parseFloat(m[0])
-
-        // Integer
-        } else if ((m = sub.match(intRegExp))) {
-            token.type = 'INTEGER'
-            token.plain = m[0]
-            token.value = parseInt(m[0])
+        } else if (is.digit(ch)) {
+            token.type = 'NUMBER'
+            token.value = read.number(ch)
 
         // String
-        } else if ((m = sub.match(strRegExp))) {
+        } else if (ch == '"') {
             token.type = 'STRING'
-            token.plain = m[0]
-            token.value = eval(m[0]) // simpelst way to get the actual js string value, don't beat me, taken from narcissus!
-
-        // Uncomplete String
-        } else if (sub.startsWith('"')) {
-            token.type = 'UNCOMPLETE_STRING'
-            token.plain = sub
-            token.value = sub.substring(1)
-            cursor += sub.length
+            token.value = read.string(ch)
 
         // Identifier
-        } else if ((m = sub.match(identRegExp))) {
-            token.value = m[0]
+        } else if (is.letter(ch)) {
+            token.value = read.identifier(ch)
             token.type = KEYWORDS.indexOf(token.value) !== -1 ? 'KEYWORD' : 'IDENTIFIER'
             if (token.type == 'IDENTIFIER'){
                 lastIdentifier = token
             }
 
-        // Regexp, matches online on the same line and only if we didn't encounter a identifier right before it
-        } else if (lastToken.type !== 'IDENTIFIER' && (m = subline.match(reRegExp))) {
-            token.type = 'REGEXP'
-            token.plain = m[0]
-            token.value = m[1]
-            token.flags = m[2]
-
         // Operator
-        } else if ((m = sub.match(opRegExp))) {
-
-            // Check for assignments
-            let op = OPERATORS[m[0]]
-            if (op.substring(0, 6) === 'ASSIGN') {
-
-                token.type = 'ASSIGN'
-                if (op === 'ASSIGN') {
-                    token.operator = null
-
-                } else {
-                    token.operator = op.substring(7)
-                }
-
+        } else if (is.operator(ch)) {
+            if (ch == '{'){
+                token.type = 'FIELD'
+                token.value = read.field(ch)
             } else {
-                token.type = op
+                token.type = 'OPERATOR'
+                token.value = read.operator(ch)
             }
-
-            token.value = m[0]
 
         // Whitespace handling
-        } else if ((m = sub.match(wsRegExp))) {
-
+        } else if (is.blank(ch)) {
             token.type = 'WHITESPACE'
-            token.value = m[0]
-
-            // Provide meta information about whitespacing
-            spaceBefore = m[0].replace(/\t/g, '    ').length
-            if (col === 1) {
-                indentation = spaceBefore
-
-            } else {
-                lastToken.ws.after = spaceBefore
-            }
+            token.value = read.whiteSpace()
 
         // If we ever hit this... we suck
         } else {
-            throw new Error('Unexpected: ' + sub[0] + ' on :')
+            throw new Error('Unexpected: ' + ch + ' on :')
         }
 
-        // Add non-whitespace tokens to stream
-        if (token.type !== 'WHITESPACExxx') {
-            if (lastIdentifier){
-                if (token.value == '('){
-                    activeContext = lastIdentifier
-                    lastIdentifier.type = 'FUNCTION'
-                    context.push(lastIdentifier)
+        if (lastIdentifier){
+            if (token.value == '('){
+                nextContext()
 
-                    contextPosition = 0
-                    activeContext.argumentCount = 1
-                } else if (token.value == ')'){
-                    context.pop()
-                    activeContext = context[context.length - 1]
-                } else if (token.value == ','){
-                    if (activeContext){
-                        contextPosition++
-                        activeContext.argumentCount = contextPosition + 1
-                    }
+            } else if (token.value == ')'){
+                previousContext()
+
+            } else if (token.value == ','){
+                if (activeContext){
+                    contextPos++
+                    // activeContext.contextPos = contextPos
                 }
+
             }
-
-            token.context = activeContext ? activeContext.value : null
-            token.contextPos = token.context ? contextPosition : null
-            
-            list.push(token)
         }
 
-        // Advance cursor by match length
-        let len = 1
-        if (m) {
-            len = m[0].length + m.index
+        if (activeContext){
+            token.context = activeContext.value
+            token.contextPos = contextPos
         }
-
-        cursor += len
-        col += len
-
+        
+        list.push(token)
     }
 
     return list

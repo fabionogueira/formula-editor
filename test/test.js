@@ -102,7 +102,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); // @ts-check
 
-var _tokenizer = __webpack_require__(/*! ./tokenizer2 */ "./src/tokenizer2.js");
+var _tokenizer = __webpack_require__(/*! ./tokenizer */ "./src/tokenizer.js");
 
 var _tokenizer2 = _interopRequireDefault(_tokenizer);
 
@@ -173,7 +173,10 @@ var Editor = function () {
                 }
             };
             textarea.onkeyup = function () {
-                _this._generateTip();
+                // this._generateTip()
+                if (_this._onTip) {
+                    _this._onTip(_this._getActiveToken());
+                }
             };
             textarea.onmouseup = function () {
                 // this._generateTip()
@@ -192,16 +195,8 @@ var Editor = function () {
             };
         }
     }, {
-        key: '_generateTip',
-        value: function _generateTip() {
-            var i = void 0,
-                o = void 0,
-                n = void 0,
-                s = void 0,
-                b = void 0,
-                e = void 0;
-            var tip = '';
-
+        key: '_getActiveToken',
+        value: function _getActiveToken() {
             var tokens = this._tokens || [];
             var p = this._textarea.selectionStart - 1;
             var index = tokens.findIndex(function (tk) {
@@ -215,97 +210,8 @@ var Editor = function () {
                 token = tokens[index - 1];
             }
 
-            if (token) {
-                document.getElementById('console').innerHTML = p + ',' + '\ncursor     = ' + token.cursor + '\ncol        = ' + token.col + '\ncontext    = ' + token.context + '\ncontextPos = ' + token.contextPos + '\nvalue      = ' + token.value;
-            } else {
-                document.getElementById('console').innerHTML = '';
-            }
-
-            if (token) {
-                if (token.type == 'FUNCTION' && !token.validate) {
-                    for (i in this._functions) {
-                        if (i.startsWith(token.value)) {
-                            tip += '<p style="' + (i == token.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
-                        }
-                    }
-                } else if (token.type == 'IDENTIFIER' && !token.validate) {
-                    for (i in this._fields) {
-                        n = i.substring(0, i.length - 1);
-                        if (i.startsWith(token.value)) {
-                            tip += '<p style="' + (n == token.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
-                        }
-                    }
-                } else if (token.context) {
-                    o = this._functions[token.context];
-                    if (o) {
-                        tip = token.context + '(';
-                        s = '';
-
-                        if (o.arguments) {
-                            e = false;
-                            for (i = 0; i < o.arguments.length; i++) {
-                                n = o.arguments[i].name;
-                                b = i == token.contextPos;
-
-                                if (b) {
-                                    e = true;
-                                }
-
-                                tip += s + (b || i == o.arguments.length - 1 && !e && o.arguments[i].several ? '<b style="background:#f3dd9b">' + n + '</b>' : n);
-                                s = '; ';
-                            }
-
-                            tip += ')';
-                        }
-                    }
-                }
-            }
-
-            document.getElementById('tip').innerHTML = tip;
-
-            // if (this._onTip){
-            //     this._onTip(tip)
-            // }
+            return token;
         }
-
-        // _getParamDefinition(position){
-        //     let token
-        //     let positions = this._tokenizer.getPositions()
-
-        //     while (position >= 0){
-        //         token = positions[position]
-
-        //         if (token && token.type != 'blank'){
-        //             this._validateToken(token)
-        //             return token
-        //         }
-
-        //         position--
-        //     }
-        // }
-
-        // _validateToken(token){
-        //     let tokens = this._tokenizer.getTokens()
-        //     let j = token.index + 1
-        //     let i, tk
-
-        //     token.validate = false
-
-        //     if (token.type=='function'){
-        //         for (i=j; i<tokens.length; i++){
-        //             tk = tokens[i]
-
-        //             if (tk.value == '('){
-        //                 return token.validate = this._functions[token.value] ? true : false
-        //             } else if (tk.type != 'blank'){
-        //                 return token.validate = false
-        //             }
-        //         }
-        //     } else if (token.type=='field'){
-        //         token.validate = this._fields[token.value] ? true : false
-        //     }
-        // }
-
     }, {
         key: '_render',
         value: function _render() {
@@ -319,14 +225,8 @@ var Editor = function () {
             tokens.forEach(function (token) {
                 if (token.type == 'FUNCTION') {
                     token.validate = _this2._functions[token.value] ? true : false;
-                } else if (token.type == 'IDENTIFIER') {
+                } else if (token.type == 'FIELD') {
                     token.validate = _this2._fields[token.value] ? true : false;
-                } else if (token.type == 'STRING') {
-                    token.value = '"' + token.value + '"';
-                } else if (token.type == 'UNCOMPLETE_STRING') {
-                    token.value = '"' + token.value;
-                } else if (token.type == 'NEWLINE') {
-                    token.value = '\n';
                 }
 
                 html += _this2._formatToken(token);
@@ -381,10 +281,10 @@ exports.default = Editor;
 
 /***/ }),
 
-/***/ "./src/tokenizer2.js":
-/*!***************************!*\
-  !*** ./src/tokenizer2.js ***!
-  \***************************/
+/***/ "./src/tokenizer.js":
+/*!**************************!*\
+  !*** ./src/tokenizer.js ***!
+  \**************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -394,8 +294,6 @@ exports.default = Editor;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-// @ts-check
-
 // https://gist.github.com/BonsaiDen/1810887
 
 /**
@@ -475,149 +373,157 @@ var opRegExp = new RegExp(opMatch),
 
 // Token Class ----------------------------------------------------------------
 // ----------------------------------------------------------------------------
-function Token() {
-    this.col = 1;
-    this.line = 1;
-    this.context = null;
-    this.contextPos = null;
-    this.argumentCount = null;
-    this.cursor = null;
-    this.flags = null;
-    this.operator = null;
-    this.type = null;
-    this.value = null;
-    this.plain = null;
-    this.validate = null;
+function newToken(line, col, cursor) {
+    return {
+        col: col,
+        line: line,
+        cursor: cursor,
+        type: null,
+        value: null,
+
+        context: null,
+        contextPos: null
+    };
 }
 
-// Main Tokenizer function ----------------------------------------------------
-// ----------------------------------------------------------------------------
-function tokenize(input, tabWidth) {
-    var cursor = -1,
+function tokenize(input) {
+    var ch = void 0,
+        token = void 0,
+        lastIdentifier = void 0,
+        activeContext = void 0,
+        cursor = -1,
         line = 1,
         col = 0,
-        spaceBefore = 0,
-        indentation = 0,
-
-    // tabExpand = new Array((tabWidth || 4)).join(' '),
-    token = new Token(),
-        lastToken = null,
-        lastIdentifier = null,
-        activeContext = null,
         list = [],
         context = [],
-        contextPosition = 0,
-        ch = void 0,
-        length = input.length;
+        contextPos = 0;
 
     function nextChar() {
         col++;
         return input[++cursor];
     }
 
-    function isDigit(ch) {
-        return (/\d/.test(ch)
-        );
+    function nextContext() {
+        if (activeContext) {
+            activeContext.contextPosCache = contextPos;
+        }
+
+        activeContext = lastIdentifier;
+        activeContext.type = 'FUNCTION';
+
+        context.push(activeContext);
+        contextPos = 0;
     }
 
-    function isLetter(ch) {
-        return (/[a-z]/i.test(ch)
-        );
+    function previousContext() {
+        context.pop();
+        activeContext = context[context.length - 1];
+        contextPos = activeContext ? activeContext.contextPosCache : null;
     }
 
-    function isOperator(ch) {
-        return (/\=|\+|-|\*|\/|\^|\(|\)/.test(ch)
-        );
-    }
+    var is = {
+        digit: function digit(ch) {
+            return (/\d/.test(ch)
+            );
+        },
+        letter: function letter(ch) {
+            return (/[a-z]/i.test(ch)
+            );
+        },
+        operator: function operator(ch) {
+            return (/\=|\+|-|\*|\/|\^|\(|\)|\{|\}|\>|\<|;|,/.test(ch)
+            );
+        },
+        blank: function blank(ch) {
+            return ch == ' ' || ch == '\t' || ch.charCodeAt(0) == 160;
+        }
+    };
 
-    function isBlank(ch) {
-        return ch == ' ' || ch == '\t' || ch.charCodeAt(0) == 160;
-    }
+    var read = {
+        number: function number(ch) {
+            var value = ch;
 
-    function readNumber(ch) {
-        var value = ch;
+            while (ch = nextChar()) {
+                if (is.digit(ch) || ch == ".") {
+                    value += ch;
+                } else {
+                    cursor--;
+                    col--;
+                    break;
+                }
+            }
 
-        while (ch = nextChar()) {
-            if (isDigit(ch) || ch == ".") {
+            return value;
+        },
+        field: function field(ch) {
+            var value = ch;
+
+            while (ch = nextChar()) {
                 value += ch;
-            } else {
-                cursor--;
-                col--;
-                break;
+
+                if (ch == '}') {
+                    break;
+                }
             }
-        }
 
-        return value;
-    }
+            return value;
+        },
+        string: function string(ch) {
+            var value = ch;
+            var start = ch;
 
-    function readString(ch) {
-        var value = ch;
-        var start = ch;
-
-        while (ch = nextChar()) {
-            value += ch;
-
-            if (start == ch) {
-                break;
-            }
-        }
-
-        return value;
-    }
-
-    function readIdentifier(ch) {
-        var value = ch;
-
-        while (ch = nextChar()) {
-            if (isLetter(ch) || isDigit(ch)) {
+            while (ch = nextChar()) {
                 value += ch;
-            } else {
-                cursor--;
-                col--;
-                break;
+
+                if (start == ch) {
+                    break;
+                }
             }
-        }
 
-        return value;
-    }
+            return value;
+        },
+        identifier: function identifier(ch) {
+            var value = ch;
 
-    function readOperator(ch) {
-        return ch;
-    }
-
-    function readWhiteSpace() {
-        var value = ' ';
-
-        while (ch = nextChar()) {
-            if (isBlank(ch)) {
-                value += ' ';
-            } else {
-                cursor--;
-                col--;
-                break;
+            while (ch = nextChar()) {
+                if (is.letter(ch) || is.digit(ch)) {
+                    value += ch;
+                } else {
+                    cursor--;
+                    col--;
+                    break;
+                }
             }
-        }
 
-        return value;
-    }
+            return value;
+        },
+        operator: function operator(ch) {
+            return ch;
+        },
+        whiteSpace: function whiteSpace() {
+            var value = ' ';
+
+            while (ch = nextChar()) {
+                if (is.blank(ch)) {
+                    value += ' ';
+                } else {
+                    cursor--;
+                    col--;
+                    break;
+                }
+            }
+
+            return value;
+        }
+    };
 
     while (ch = nextChar()) {
-
-        // Save the last non-whitespace token
-        if (token.type !== 'WHITESPACE') {
-            lastToken = token;
-        }
-
-        // Create next token
-        token = new Token();
-        token.line = line;
-        token.col = col;
-        token.cursor = cursor;
+        token = newToken(line, col, cursor);
 
         // Newlines
         if (ch === '\n') {
             token.type = 'NEWLINE';
-            token.value = '\\n';
+            token.value = ch;
             col = 0;
             line++;
 
@@ -636,32 +542,37 @@ function tokenize(input, tabWidth) {
             token.value = ''; // m[0].substr(2)
 
             // Float
-        } else if (isDigit(ch)) {
+        } else if (is.digit(ch)) {
             token.type = 'NUMBER';
-            token.value = readNumber(ch);
+            token.value = read.number(ch);
 
             // String
         } else if (ch == '"') {
             token.type = 'STRING';
-            token.value = readString(ch);
+            token.value = read.string(ch);
 
             // Identifier
-        } else if (isLetter(ch)) {
-            token.value = readIdentifier(ch);
+        } else if (is.letter(ch)) {
+            token.value = read.identifier(ch);
             token.type = KEYWORDS.indexOf(token.value) !== -1 ? 'KEYWORD' : 'IDENTIFIER';
             if (token.type == 'IDENTIFIER') {
                 lastIdentifier = token;
             }
 
             // Operator
-        } else if (isOperator(ch)) {
-            token.type = 'OPERATOR';
-            token.value = readOperator(ch);
+        } else if (is.operator(ch)) {
+            if (ch == '{') {
+                token.type = 'FIELD';
+                token.value = read.field(ch);
+            } else {
+                token.type = 'OPERATOR';
+                token.value = read.operator(ch);
+            }
 
             // Whitespace handling
-        } else if (isBlank(ch)) {
+        } else if (is.blank(ch)) {
             token.type = 'WHITESPACE';
-            token.value = readWhiteSpace();
+            token.value = read.whiteSpace();
 
             // If we ever hit this... we suck
         } else {
@@ -670,25 +581,21 @@ function tokenize(input, tabWidth) {
 
         if (lastIdentifier) {
             if (token.value == '(') {
-                activeContext = lastIdentifier;
-                lastIdentifier.type = 'FUNCTION';
-                context.push(lastIdentifier);
-
-                contextPosition = 0;
-                activeContext.argumentCount = 1;
+                nextContext();
             } else if (token.value == ')') {
-                context.pop();
-                activeContext = context[context.length - 1];
+                previousContext();
             } else if (token.value == ',') {
                 if (activeContext) {
-                    contextPosition++;
-                    activeContext.argumentCount = contextPosition + 1;
+                    contextPos++;
+                    // activeContext.contextPos = contextPos
                 }
             }
         }
 
-        token.context = activeContext ? activeContext.value : null;
-        token.contextPos = token.context ? contextPosition : null;
+        if (activeContext) {
+            token.context = activeContext.value;
+            token.contextPos = contextPos;
+        }
 
         list.push(token);
     }
@@ -717,13 +624,71 @@ var _editor2 = _interopRequireDefault(_editor);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var editor = new _editor2.default(document.getElementById('editor'), {
-    onTip: function onTip(tip) {
-        document.getElementById('tip').innerHTML = tip;
+    onTip: function onTip(token) {
+        generateTip(token);
     }
 }); // @ts-check
 
-editor.setFunctions({
-    'sum': {
+function generateTip(token) {
+    var i = void 0,
+        o = void 0,
+        n = void 0,
+        s = void 0,
+        b = void 0,
+        e = void 0;
+    var tip = '';
+
+    if (token) {
+        document.getElementById('console').innerHTML = '\ncursor     = ' + token.cursor + '\ncol        = ' + token.col + '\ncontext    = ' + token.context + '\ncontextPos = ' + token.contextPos + '\nvalue      = ' + token.value;
+    } else {
+        document.getElementById('console').innerHTML = '';
+    }
+
+    if (token) {
+        if (token.type == 'FUNCTION' && !token.validate) {
+            for (i in functions) {
+                if (i.startsWith(token.value)) {
+                    tip += '<p style="' + (i == token.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
+                }
+            }
+        } else if (token.type == 'IDENTIFIER' && !token.validate) {
+            for (i in fields) {
+                n = i.substring(0, i.length - 1);
+                if (i.startsWith(token.value)) {
+                    tip += '<p style="' + (n == token.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
+                }
+            }
+        } else if (token.context) {
+            o = functions[token.context];
+            if (o) {
+                tip = token.context + '(';
+                s = '';
+
+                if (o.arguments) {
+                    e = false;
+                    for (i = 0; i < o.arguments.length; i++) {
+                        n = o.arguments[i].name;
+                        b = i == token.contextPos;
+
+                        if (b) {
+                            e = true;
+                        }
+
+                        tip += s + (b || i == o.arguments.length - 1 && !e && o.arguments[i].several ? '<b style="background:#f3dd9b">' + n + '</b>' : n);
+                        s = '; ';
+                    }
+
+                    tip += ')';
+                }
+            }
+        }
+    }
+
+    document.getElementById('tip').innerHTML = tip;
+}
+
+var functions = {
+    'SUM': {
         arguments: [{
             name: 'start',
             type: 'text',
@@ -734,14 +699,14 @@ editor.setFunctions({
             description: 'a última {context} do intervalo de soma'
         }]
     },
-    'value': {
+    'VALUE': {
         arguments: [{
             name: 'field',
             type: 'field',
             description: 'campo a definir o valor'
         }]
     },
-    'values': {
+    'VALUES': {
         arguments: [{
             name: 'field1',
             type: 'field',
@@ -757,7 +722,7 @@ editor.setFunctions({
             description: 'campo a definir o valor'
         }]
     },
-    'if': {
+    'IF': {
         arguments: [{
             name: 'condition',
             type: 'boolean',
@@ -772,13 +737,15 @@ editor.setFunctions({
             description: 'campo a definir o valor'
         }]
     },
-    'valuex': true
-});
+    'VALUEX': true
+};
+var fields = {
+    '{a}': 1,
+    '{bb}': 1
+};
 
-editor.setFields({
-    'a': 1,
-    'bb': 1
-});
+editor.setFunctions(functions);
+editor.setFields(fields);
 
 /***/ })
 

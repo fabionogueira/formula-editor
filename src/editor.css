@@ -28,47 +28,17 @@
     background: transparent;
     caret-color: #000;
 }
-.formula-editor-pre{
-    
-}
 
-.KEYWORD, .FUNCTION{color: #00f}
+.IDENTIFIER, .KEYWORD, .FUNCTION{color: #00f}
 .FUNCTION.UNVALIDATE{color: #c0c0c0}
 
-.STRING, .UNCOMPLETE_STRING{color: #FFC107}
+.STRING{color: #f77e50}
 
-.LEFT_CURLY, .RIGHT_CURLY{color: #009688}
+.FIELD {color: #009688}
+.FIELD.UNVALIDATE{color: #c0c0c0}
 
-.IDENTIFIER{color:#009688}
-.IDENTIFIER.UNVALIDATE{color:#c0c0c0}
+.OPERATOR{color: #9C27B0;}
 
-.context_var.validate{
-    font-weight: bold;
-    color: #000;
-}
-.operator{
-    color: #9C27B0;
-}
-.number.unvalidate {
-    color: red;
-    /* background-image: url(wiggle.png);
-    background-repeat: repeat-x;
-    background-position: bottom; */
-}
+.CONTEXTVAR.validate{font-weight:bold; color: #000;}
 
-.caret {
-    position:absolute;
-    height:19px;
-    width:1px;
-    background: black;
-    /*animation: 1s blink step-end infinite;
-    -webkit-animation: 1s blink step-end infinite;*/
-}
-/* @keyframes "blink" {
-  from, to { background: transparent; }
-  50% {background: black; }
-}
-@-webkit-keyframes "blink" {
-  from, to { background: transparent; }
-  50% {background: black; }
-} */
+.NUMBER.UNVALIDATE{color: red;}
