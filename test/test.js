@@ -173,7 +173,7 @@ var Editor = function () {
                 }
             };
             textarea.onkeyup = function () {
-                // this._generateTip()
+                _this._generateTip();
             };
             textarea.onmouseup = function () {
                 // this._generateTip()
@@ -191,58 +191,82 @@ var Editor = function () {
                 if (_this.onblur) _this.onblur();
             };
         }
+    }, {
+        key: '_generateTip',
+        value: function _generateTip() {
+            var i = void 0,
+                o = void 0,
+                n = void 0,
+                s = void 0,
+                b = void 0,
+                e = void 0;
+            var tip = '';
 
-        // _generateTip(){
-        //     let t, i, o, n, s, b, e
-        //     let tip = ''
+            var tokens = this._tokens || [];
+            var p = this._textarea.selectionStart - 1;
+            var index = tokens.findIndex(function (tk) {
+                return tk.cursor >= p;
+            });
+            var token = tokens[index];
 
-        //     t = this._getParamDefinition(this._textarea.selectionStart -1)
+            if (!token) {
+                token = tokens[0];
+            } else if (token.cursor > p && p >= 0) {
+                token = tokens[index - 1];
+            }
 
-        //     if (t){
-        //         if (t.type=='function' && !t.validate){
-        //             for (i in this._functions){
-        //                 if (i.startsWith(t.value)){
-        //                     tip += `<p style="${i==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
-        //                 }
-        //             }
-        //         } else if (t.type=='field' && !t.validate){
-        //             for (i in this._fields){
-        //                 n = i.substring(0, i.length - 1)
-        //                 if (i.startsWith(t.value)){
-        //                     tip += `<p style="${n==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
-        //                 }
-        //             }
-        //         } else if (t.context){
-        //             o = this._functions[t.context]
-        //             if (o){
-        //                 tip = t.context + '('
-        //                 s = ''
+            if (token) {
+                document.getElementById('console').innerHTML = p + ',' + '\ncursor     = ' + token.cursor + '\ncol        = ' + token.col + '\ncontext    = ' + token.context + '\ncontextPos = ' + token.contextPos + '\nvalue      = ' + token.value;
+            } else {
+                document.getElementById('console').innerHTML = '';
+            }
 
-        //                 if (o.arguments){
-        //                     e = false
-        //                     for (i=0; i<o.arguments.length; i++){
-        //                         n = o.arguments[i].name
-        //                         b = (i == t.argumentIndex)
+            if (token) {
+                if (token.type == 'FUNCTION' && !token.validate) {
+                    for (i in this._functions) {
+                        if (i.startsWith(token.value)) {
+                            tip += '<p style="' + (i == token.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
+                        }
+                    }
+                } else if (token.type == 'IDENTIFIER' && !token.validate) {
+                    for (i in this._fields) {
+                        n = i.substring(0, i.length - 1);
+                        if (i.startsWith(token.value)) {
+                            tip += '<p style="' + (n == token.value ? 'background:#00BCD4' : '') + '">' + i + '</p>';
+                        }
+                    }
+                } else if (token.context) {
+                    o = this._functions[token.context];
+                    if (o) {
+                        tip = token.context + '(';
+                        s = '';
 
-        //                         if (b){
-        //                             e = true
-        //                         }
+                        if (o.arguments) {
+                            e = false;
+                            for (i = 0; i < o.arguments.length; i++) {
+                                n = o.arguments[i].name;
+                                b = i == token.contextPos;
 
-        //                         tip += s + ( b || (i==o.arguments.length-1 && !e && o.arguments[i].several) ? `<b style="background:#f3dd9b">${n}</b>` : n)
-        //                         s = '; '
-        //                     }
+                                if (b) {
+                                    e = true;
+                                }
 
-        //                     tip += ')'
-        //                 }
-        //             }
+                                tip += s + (b || i == o.arguments.length - 1 && !e && o.arguments[i].several ? '<b style="background:#f3dd9b">' + n + '</b>' : n);
+                                s = '; ';
+                            }
 
-        //         }
-        //     }
+                            tip += ')';
+                        }
+                    }
+                }
+            }
 
-        //     if (this._onTip){
-        //         this._onTip(tip)
-        //     }
-        // }
+            document.getElementById('tip').innerHTML = tip;
+
+            // if (this._onTip){
+            //     this._onTip(tip)
+            // }
+        }
 
         // _getParamDefinition(position){
         //     let token
@@ -287,7 +311,7 @@ var Editor = function () {
         value: function _render() {
             var _this2 = this;
 
-            var tokens = (0, _tokenizer2.default)(this._textarea.value).all();
+            var tokens = this._tokens = (0, _tokenizer2.default)(this._textarea.value);
             var html = '';
 
             tokens.forEach(function (token) {
@@ -299,6 +323,8 @@ var Editor = function () {
                     token.value = '"' + token.value + '"';
                 } else if (token.type == 'UNCOMPLETE_STRING') {
                     token.value = '"' + token.value;
+                } else if (token.type == 'NEWLINE') {
+                    token.value = '\n';
                 }
 
                 html += _this2._formatToken(token);
@@ -312,9 +338,8 @@ var Editor = function () {
         value: function _formatToken(token) {
             var r = token.value;
             var cls = token.type + (token.validate === false ? ' UNVALIDATE' : '');
-            var space = '                                    ';
 
-            r = '<span class="' + cls + '">' + (space.substring(0, token.ws.before) + r) + '</span>';
+            r = '<span class="' + cls + '">' + r + '</span>';
 
             return r;
         }
@@ -367,6 +392,10 @@ exports.default = Editor;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+// @ts-check
+
+// https://gist.github.com/BonsaiDen/1810887
+
 /**
   * Simple JavaScript tokenizer (not a full parser!!!)
   *
@@ -426,13 +455,11 @@ var OPERATORS = {
     '}': 'RIGHT_CURLY',
     '(': 'LEFT_PAREN',
     ')': 'RIGHT_PAREN'
-};
 
-// Regular Expressions --------------------------------------------------------
-// ----------------------------------------------------------------------------
-var opMatch = '^';
+    // Regular Expressions --------------------------------------------------------
+    // ----------------------------------------------------------------------------
+};var opMatch = '^';
 for (var i in OPERATORS) {
-
     if (opMatch !== '^') {
         opMatch += '|^';
     }
@@ -453,7 +480,6 @@ var opRegExp = new RegExp(opMatch),
 // Token Class ----------------------------------------------------------------
 // ----------------------------------------------------------------------------
 function Token() {
-
     this.col = 1;
     this.line = 1;
     this.ws = {
@@ -463,9 +489,16 @@ function Token() {
         trailing: 0
     };
 
+    this.context = null;
+    this.contextPos = null;
+    this.argumentCount = null;
+    this.cursor = null;
+    this.flags = null;
+    this.operator = null;
     this.type = null;
     this.value = null;
     this.plain = null;
+    this.validate = null;
 }
 
 Token.prototype.toString = function () {
@@ -508,6 +541,7 @@ function tokenize(input, tabWidth) {
         token = new Token();
         token.line = line;
         token.col = col;
+        token.cursor = cursor;
         token.ws.indent = indentation;
         token.ws.before = lastToken.type === 'NEWLINE' ? 0 : spaceBefore;
 
@@ -606,6 +640,7 @@ function tokenize(input, tabWidth) {
         } else if (m = sub.match(wsRegExp)) {
 
             token.type = 'WHITESPACE';
+            token.value = m[0];
 
             // Provide meta information about whitespacing
             spaceBefore = m[0].replace(/\t/g, '    ').length;
@@ -621,7 +656,7 @@ function tokenize(input, tabWidth) {
         }
 
         // Add non-whitespace tokens to stream
-        if (token.type !== 'WHITESPACE') {
+        if (token.type !== 'WHITESPACExxx') {
             if (lastIdentifier) {
                 if (token.value == '(') {
                     activeContext = lastIdentifier;
@@ -657,34 +692,7 @@ function tokenize(input, tabWidth) {
         col += len;
     }
 
-    // Return some API for ya
-    var tokenPos = -1;
-    return {
-        peek: function peek() {
-            return list[tokenPos + 1];
-        },
-
-        next: function next() {
-            return list[++tokenPos];
-        },
-
-        get: function get() {
-            return list[tokenPos];
-        },
-
-        all: function all() {
-            return list;
-        },
-
-        at: function at(pos) {
-            return list[pos];
-        },
-
-        reset: function reset() {
-            tokenPos = 0;
-        }
-
-    };
+    return list;
 }
 
 exports.default = tokenize;

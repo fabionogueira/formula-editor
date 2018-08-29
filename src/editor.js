@@ -60,7 +60,7 @@ export default class Editor{
             }
         }
         textarea.onkeyup = () => {
-            // this._generateTip()
+            this._generateTip()
         }
         textarea.onmouseup = () => {
             // this._generateTip()
@@ -79,57 +79,78 @@ export default class Editor{
         }
     }
 
-    // _generateTip(){
-    //     let t, i, o, n, s, b, e
-    //     let tip = ''
+    _generateTip(){
+        let i, o, n, s, b, e
+        let tip = ''
 
-    //     t = this._getParamDefinition(this._textarea.selectionStart -1)
+        let tokens = this._tokens || []
+        let p = this._textarea.selectionStart -1
+        let index = tokens.findIndex((tk) => {return tk.cursor >= p})
+        let token = tokens[index]
+
+        if (!token){
+            token = tokens[0]
+        }else if (token.cursor > p && p >= 0){
+            token = tokens[index - 1]
+        }
         
-    //     if (t){
-    //         if (t.type=='function' && !t.validate){
-    //             for (i in this._functions){
-    //                 if (i.startsWith(t.value)){
-    //                     tip += `<p style="${i==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
-    //                 }
-    //             }
-    //         } else if (t.type=='field' && !t.validate){
-    //             for (i in this._fields){
-    //                 n = i.substring(0, i.length - 1)
-    //                 if (i.startsWith(t.value)){
-    //                     tip += `<p style="${n==t.value ? 'background:#00BCD4' : ''}">${i}</p>`
-    //                 }
-    //             }
-    //         } else if (t.context){
-    //             o = this._functions[t.context]
-    //             if (o){
-    //                 tip = t.context + '('
-    //                 s = ''
+        if (token){
+            document.getElementById('console').innerHTML = p + ',' + 
+            '\ncursor     = ' + token.cursor +
+            '\ncol        = ' + token.col + 
+            '\ncontext    = ' + token.context + 
+            '\ncontextPos = ' + token.contextPos +
+            '\nvalue      = ' + token.value
+        } else {
+            document.getElementById('console').innerHTML = ''
+        }
+
+        if (token){
+            if (token.type=='FUNCTION' && !token.validate){
+                for (i in this._functions){
+                    if (i.startsWith(token.value)){
+                        tip += `<p style="${i==token.value ? 'background:#00BCD4' : ''}">${i}</p>`
+                    }
+                }
+            } else if (token.type=='IDENTIFIER' && !token.validate){
+                for (i in this._fields){
+                    n = i.substring(0, i.length - 1)
+                    if (i.startsWith(token.value)){
+                        tip += `<p style="${n==token.value ? 'background:#00BCD4' : ''}">${i}</p>`
+                    }
+                }
+            } else if (token.context){
+                o = this._functions[token.context]
+                if (o){
+                    tip = token.context + '('
+                    s = ''
                     
-    //                 if (o.arguments){
-    //                     e = false
-    //                     for (i=0; i<o.arguments.length; i++){
-    //                         n = o.arguments[i].name
-    //                         b = (i == t.argumentIndex)
+                    if (o.arguments){
+                        e = false
+                        for (i=0; i<o.arguments.length; i++){
+                            n = o.arguments[i].name
+                            b = (i == token.contextPos)
                             
-    //                         if (b){
-    //                             e = true
-    //                         }
+                            if (b){
+                                e = true
+                            }
                             
-    //                         tip += s + ( b || (i==o.arguments.length-1 && !e && o.arguments[i].several) ? `<b style="background:#f3dd9b">${n}</b>` : n)
-    //                         s = '; '
-    //                     }
+                            tip += s + ( b || (i==o.arguments.length-1 && !e && o.arguments[i].several) ? `<b style="background:#f3dd9b">${n}</b>` : n)
+                            s = '; '
+                        }
 
-    //                     tip += ')'
-    //                 }
-    //             }
-                
-    //         }
-    //     }
+                        tip += ')'
+                    }
+                }
+            }
+        }
 
-    //     if (this._onTip){
-    //         this._onTip(tip)
-    //     }
-    // }
+        document.getElementById('tip').innerHTML = tip
+
+        // if (this._onTip){
+        //     this._onTip(tip)
+        // }
+    }
 
     // _getParamDefinition(position){
     //     let token
@@ -170,7 +191,7 @@ export default class Editor{
     // }
 
     _render(){
-        let tokens = tokenizer(this._textarea.value).all()
+        let tokens = this._tokens = tokenizer(this._textarea.value)
         let html = ''
         
         tokens.forEach(token => {
@@ -182,7 +203,9 @@ export default class Editor{
                 token.value = `"${token.value}"`
             } else if (token.type == 'UNCOMPLETE_STRING'){
                 token.value = `"${token.value}`
-            } 
+            } else if (token.type == 'NEWLINE'){
+                token.value = '\n'
+            }
 
             html += this._formatToken(token)
         })
@@ -194,9 +217,8 @@ export default class Editor{
     _formatToken(token){
         let r = token.value
         let cls = token.type + (token.validate===false ? ' UNVALIDATE' : '')
-        let space = '                                    '
 
-        r = `<span class="${cls}">${space.substring(0, token.ws.before) + r}</span>`
+        r = `<span class="${cls}">${r}</span>`
     
         return r
     }
