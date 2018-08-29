@@ -13,11 +13,12 @@
 <body>
 <h3></h3>
 <pre>
-    #Formula sample
-    sum(
-        if({a} > 1; values("xx"; "yy"));
-        if({bb} > 10; values("zz"; "ww"))
-    )
+#Formula sample
+
+SUM(
+    IF({a} > 1, VALUES("xx", "yy")),
+    IF({bb} > 10, VALUES("zz", "ww"))
+)
 </pre>
 
     <div id="editor"></div>
